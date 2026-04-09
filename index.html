@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jazz Scale Chord Trainer</title>
+<style>
+:root{--grn:#658A6E;--grn-l:#8BAF92;--grn-xl:#B5CCBA;--bg:#F5F2EB;--card:#EDE9E1;--txt:#3a3a3a;--txt2:#918a80;--txt3:#c0b9af;--border:#ddd8cf;--border-l:#e6e2da}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'SF Pro Display',-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;padding:28px 32px}
+#app{width:100%;max-width:1280px;display:flex;flex-direction:column;gap:24px}
+/* ---- Header ---- */
+header{display:flex;justify-content:space-between;align-items:center;padding:0 0 16px}
+header h1{font-size:1.1rem;font-weight:500;color:var(--grn);letter-spacing:.5px}
+#midi-status{font-size:.76rem;padding:4px 14px;border-radius:20px;border:1px solid var(--border)}
+#midi-status.connected{color:var(--grn);border-color:var(--grn-xl)}
+#midi-status.disconnected{color:#b07;border-color:#e0c8cf}
+/* ---- Top controls row ---- */
+#controls-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#settings{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#mode-bar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-left:10px}
+#mode-bar label{display:none}
+.ctrl-sep{width:1px;height:18px;background:var(--border);margin:0 6px}
+.setting-group{display:flex;align-items:center;gap:4px}
+.setting-group label{display:none}
+select{background:var(--bg);color:var(--txt);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:.82rem;cursor:pointer;transition:border-color .2s}
+select:focus{outline:none;border-color:var(--grn)}
+select:hover{border-color:var(--grn-l)}
+#chord-type-btns{display:flex;gap:3px}
+.type-btn,.mode-btn{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;transition:all .2s;font-weight:400}
+.type-btn.active{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:500}
+.mode-btn.active{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:500}
+.type-btn:hover:not(.active),.mode-btn:hover:not(.active){border-color:var(--grn-l);color:var(--txt)}
+/* ---- 3-column main area ---- */
+#main-columns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;align-items:start;margin-top:8px}
+#col-left{display:flex;flex-direction:column;gap:24px;align-items:center}
+#col-center{display:flex;flex-direction:column;gap:16px;align-items:center;justify-self:center;width:100%}
+#col-right{display:flex;flex-direction:column;gap:16px}
+/* ---- Question area ---- */
+#question-area{text-align:center;padding:40px 28px 28px;width:100%;border-bottom:1px solid var(--border)}
+#scale-label{font-size:.88rem;color:var(--txt2);margin-bottom:10px;letter-spacing:2px;font-weight:400}
+#roman-numeral{font-size:5.5rem;font-family:Georgia,'Times New Roman',serif;line-height:1;margin:16px 0 24px;min-height:5.5rem;display:flex;align-items:center;justify-content:center;transition:color .3s;color:var(--txt)}
+.rn-prefix{font-size:.55em;margin-right:2px;position:relative;top:-.05em}
+.rn-numeral{}
+.rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:2px}
+#roman-numeral.correct{color:var(--grn)}
+#next-preview{font-family:Georgia,'Times New Roman',serif;font-size:2rem;color:var(--txt);opacity:0;min-height:2.2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+#next-preview .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:1px}
+#next-preview .rn-prefix{font-size:.55em;margin-right:1px}
+#action-btns{display:flex;gap:14px;justify-content:center;margin-bottom:14px}
+#action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 24px;font-size:.82rem;cursor:pointer;transition:all .2s}
+#action-btns button:hover{border-color:var(--grn-l);color:var(--txt)}
+#answer-display{font-size:1rem;color:var(--grn);min-height:1.5em;transition:opacity .3s}
+/* ---- Feedback ---- */
+#feedback-area{display:flex;justify-content:space-between;align-items:center;padding:8px 8px;min-height:36px}
+#feedback{font-size:1rem;font-weight:500;transition:opacity .3s;flex:1;text-align:left}
+#feedback.correct{color:var(--grn)}
+#feedback.info{color:var(--grn-l)}
+#score{font-size:.85rem;color:var(--txt2);white-space:nowrap;flex-shrink:0}
+#held-notes{text-align:center;font-size:.82rem;color:var(--txt3);min-height:1.2em}
+/* ---- Voicing section (right col) ---- */
+#voicing-section{padding:0}
+#voicing-pianos{display:flex;flex-direction:column;align-items:center;gap:16px;min-height:40px}
+.voicing-col{display:flex;align-items:center;gap:10px;width:100%}
+.voicing-label{font-size:.7rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;min-width:76px;text-align:right}
+/* ---- Mini piano ---- */
+.mini-piano{position:relative;user-select:none}
+.mp-key{position:absolute;border-radius:0 0 3px 3px}
+.mp-key.w{background:#FAF8F4;border:1px solid #d8d4cc;z-index:1}
+.mp-key.b{background:#4a4a4a;border:1px solid #3a3a3a;z-index:2}
+.mp-key.w.hl{background:var(--grn-l)}
+.mp-key.b.hl{background:var(--grn)}
+.mp-lbl{position:absolute;z-index:3;text-align:center;pointer-events:none;font-size:.58rem;white-space:nowrap}
+.mp-lbl.fn{color:var(--grn);font-weight:600}
+.mp-lbl.nn{color:#918a80}
+/* ---- CoF (left col) ---- */
+#cof-section{display:flex;justify-content:center;padding:0}
+#cof-svg text{font-family:'SF Pro Display',-apple-system,sans-serif;pointer-events:none}
+#cof-svg .cof-key{fill:#a8a29a;font-size:15px;font-weight:400;text-anchor:middle;dominant-baseline:central}
+#cof-svg .cof-key.active{fill:var(--grn);font-size:17px;font-weight:700}
+#cof-svg .cof-minor{fill:#c8c2b8;font-size:11.5px;text-anchor:middle;dominant-baseline:central}
+#cof-svg .cof-minor.active{fill:var(--grn-l)}
+#cof-svg .cof-ring{fill:none;stroke:var(--border);stroke-width:1}
+#cof-svg .cof-dot{fill:var(--border)}
+#cof-svg .cof-dot.active{fill:var(--grn)}
+/* ---- Scale ref piano (left col) ---- */
+#scale-ref-section{width:100%}
+#scale-ref-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+.sr-title{font-size:.78rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;font-weight:400}
+#scale-ref{display:flex;justify-content:center;overflow:hidden}
+/* ---- Highlight toggle (shared) ---- */
+#voicing-toggles{display:flex;justify-content:center;gap:6px;margin-bottom:12px}
+.vtog{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:4px 14px;font-size:.75rem;cursor:pointer;transition:all .2s}
+.vtog.on{background:var(--grn);color:#fff;border-color:var(--grn)}
+.vtog:hover:not(.on){border-color:var(--grn-l);color:var(--txt)}
+/* ---- Responsive ---- */
+@media(max-width:960px){
+  #main-columns{grid-template-columns:1fr;gap:16px}
+  #col-left{flex-direction:row;flex-wrap:wrap;justify-content:center}
+  #roman-numeral{font-size:3.5rem;min-height:3.5rem}
+  body{padding:16px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Jazz Scale Chord Trainer</h1>
+    <div id="midi-status" class="disconnected">No MIDI device</div>
+  </header>
+
+  <div id="controls-row">
+    <section id="settings">
+      <div class="setting-group">
+        <label>Key</label>
+        <select id="key-select"></select>
+      </div>
+      <div class="setting-group">
+        <label>Scale</label>
+        <select id="scale-select"></select>
+      </div>
+      <div class="setting-group">
+        <label>Chord</label>
+        <div id="chord-type-btns">
+          <button class="type-btn active" data-type="triad">Triad</button>
+          <button class="type-btn" data-type="7th">7th</button>
+        </div>
+      </div>
+    </section>
+    <div class="ctrl-sep"></div>
+    <div id="mode-bar">
+      <label>Mode</label>
+      <button class="mode-btn active" data-mode="random">Random</button>
+      <button class="mode-btn" data-mode="sequential">1 → 7</button>
+      <button class="mode-btn" data-mode="251">ii-V-I</button>
+      <button class="mode-btn" data-mode="251-all">ii-V-I All Keys</button>
+    </div>
+  </div>
+
+  <div id="main-columns">
+    <!-- LEFT: Circle of Fifths + Accepted Voicings + Scale Ref -->
+    <div id="col-left">
+      <section id="cof-section">
+        <svg id="cof-svg" width="360" height="360" viewBox="0 0 360 360"></svg>
+      </section>
+      <section id="scale-ref-section">
+        <div id="scale-ref-header">
+          <span class="sr-title">Scale</span>
+          <button id="scale-ref-toggle" class="vtog on">Highlight On</button>
+        </div>
+        <div id="scale-ref"></div>
+      </section>
+    </div>
+
+    <!-- CENTER: Question + Feedback -->
+    <div id="col-center">
+      <section id="question-area">
+        <div id="scale-label"></div>
+        <div id="roman-numeral"><span class="rn-numeral" style="color:#ccc">—</span></div>
+        <div id="next-preview"></div>
+        <div id="action-btns">
+          <button id="show-btn" onclick="showAnswer()">Show Answer</button>
+          <button id="next-btn" onclick="nextQuestion()">Next (Space)</button>
+        </div>
+        <div id="answer-display"></div>
+      </section>
+      <section id="feedback-area">
+        <div id="feedback"></div>
+        <div id="score"></div>
+      </section>
+      <div id="held-notes"></div>
+    </div>
+
+    <!-- RIGHT: Voicing Guide -->
+    <div id="col-right">
+      <section id="voicing-section">
+        <div id="voicing-toggles"></div>
+        <div id="voicing-pianos"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======================== CONSTANTS ========================
+const LETTERS = ['C','D','E','F','G','A','B'];
+const LETTER_PC = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}; // pitch class of each natural note
+const MAJOR_IV = [0,2,4,5,7,9,11]; // major scale interval template, used as reference for Roman numeral prefixes (♭/♯)
+const ROMAN = ['I','II','III','IV','V','VI','VII'];
+
+// Scale interval patterns: semitone distances from root.
+// e.g. Dorian [0,2,3,5,7,9,10] = W H W W W H W
+const SCALES = {
+  'Major (Ionian)':       [0,2,4,5,7,9,11],
+  'Dorian':               [0,2,3,5,7,9,10],
+  'Mixolydian':           [0,2,4,5,7,9,10],
+  'Lydian':               [0,2,4,6,7,9,11],
+  'Natural Minor':        [0,2,3,5,7,8,10],
+  'Harmonic Minor':       [0,2,3,5,7,8,11],
+  'Melodic Minor':        [0,2,3,5,7,9,11]
+};
+
+const ROOTS = ['C','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
+
+// ======================== MUSIC THEORY ========================
+
+/**
+ * Convert a note name (e.g. "Eb", "F#", "Bbb") to its pitch class (0-11).
+ * Each '#' adds 1 semitone, each 'b' subtracts 1 from the natural letter's pitch class.
+ */
+function noteToPc(name) {
+  let pc = LETTER_PC[name[0]];
+  for (let i = 1; i < name.length; i++) pc += (name[i] === '#' ? 1 : -1);
+  return ((pc % 12) + 12) % 12;
+}
+
+/**
+ * Given a target pitch class and a letter name, compute the accidental needed.
+ * Key insight: diff = (targetPc - letterPc) mod 12 gives the raw offset.
+ * If diff > 6 we interpret it as negative (e.g. diff=11 means -1 = one flat),
+ * because the shortest path around the pitch class circle is always ≤ 6 semitones.
+ * This ensures we never generate triple-sharps or triple-flats for standard scales.
+ *
+ * Example: pcToNoteName(3, 'E') → E has pc=4, target=3, diff=11→-1 → "Eb"
+ */
+function pcToNoteName(pc, letter) {
+  const letterPc = LETTER_PC[letter];
+  let diff = ((pc - letterPc) % 12 + 12) % 12;
+  if (diff > 6) diff -= 12; // prefer flats over extreme sharps (and vice versa)
+  if (diff > 0) return letter + '#'.repeat(diff);
+  if (diff < 0) return letter + 'b'.repeat(-diff);
+  return letter;
+}
+
+/**
+ * Build correct enharmonic note names for any scale.
+ * Strategy: assign consecutive letter names starting from the root's letter,
+ * then compute the accidental for each to hit the target pitch class.
+ * This guarantees each letter name (A-G) appears exactly once — the fundamental
+ * rule of proper scale spelling.
+ *
+ * Example: getScaleNotes('Eb', [0,2,4,5,7,9,11])
+ *   root letter = E, so letters cycle: E F G A B C D
+ *   target PCs from Eb(3): 3,5,7,8,10,0,2
+ *   → Eb, F, G, Ab, Bb, C, D ✓
+ */
+function getScaleNotes(rootName, intervals) {
+  const rootPc = noteToPc(rootName);
+  const rootIdx = LETTERS.indexOf(rootName[0]);
+  return intervals.map((iv, i) => {
+    const targetPc = (rootPc + iv) % 12;
+    const letter = LETTERS[(rootIdx + i) % 7]; // consecutive letter for this degree
+    return pcToNoteName(targetPc, letter);
+  });
+}
+
+/** Return array of pitch classes (0-11) for each scale degree. */
+function getScalePcs(rootName, intervals) {
+  const rootPc = noteToPc(rootName);
+  return intervals.map(iv => (rootPc + iv) % 12);
+}
+
+/**
+ * Determine if a Roman numeral needs a ♭ or ♯ prefix.
+ * Compares this scale degree's interval from the tonic against the major scale.
+ * E.g. Dorian degree 2 has interval 3 (minor 3rd), major has 4 (major 3rd),
+ * diff = 3-4 = -1 → mod 12 = 11 → prefix "♭" → "♭III"
+ */
+function getDegreePrefix(scaleIntervals, degree) {
+  const diff = ((scaleIntervals[degree] - MAJOR_IV[degree]) % 12 + 12) % 12;
+  if (diff === 0) return '';
+  if (diff === 11) return '\u266d';  // -1 semitone → flat
+  if (diff === 1) return '\u266f';   // +1 semitone → sharp
+  if (diff === 10) return '\u266d\u266d'; // -2 semitones → double flat (rare)
+  return '';
+}
+
+/**
+ * Classify a chord by its interval structure and return Roman numeral formatting info.
+ *
+ * @param {number[]} intervals - Semitone distances from chord root, in stacking order.
+ *   Triad: [0, third, fifth]        e.g. [0,4,7] = major
+ *   7th:   [0, third, fifth, seventh] e.g. [0,3,7,10] = minor 7th
+ *
+ * @returns {Object} { romanCase, suffix, chordSymbol }
+ *   romanCase: 'upper' for major/dominant/augmented, 'lower' for minor/diminished
+ *   suffix:    appended to Roman numeral (e.g. "maj7", "°", "ø7")
+ *   chordSymbol: appended to root note name for display (e.g. "m7", "dim", "aug(maj7)")
+ */
+function getChordQuality(intervals, chordType) {
+  const third = intervals[1]; // 3 = minor 3rd, 4 = major 3rd
+  const fifth = intervals[2]; // 6 = diminished 5th, 7 = perfect 5th, 8 = augmented 5th
+  let triadType, romanCase;
+
+  // ---- Step 1: Classify triad quality from 3rd + 5th intervals ----
+  if (third === 4 && fifth === 7)      { triadType = 'major';     romanCase = 'upper'; }
+  else if (third === 3 && fifth === 7) { triadType = 'minor';     romanCase = 'lower'; }
+  else if (third === 3 && fifth === 6) { triadType = 'diminished';romanCase = 'lower'; }
+  else if (third === 4 && fifth === 8) { triadType = 'augmented'; romanCase = 'upper'; }
+  else { triadType = 'other'; romanCase = 'lower'; }
+
+  if (chordType === 'triad') {
+    const suf = triadType === 'diminished' ? '\u00b0' : triadType === 'augmented' ? '\u207a' : '';
+    const sym = triadType === 'minor' ? 'm' : triadType === 'diminished' ? 'dim' : triadType === 'augmented' ? 'aug' : '';
+    return { romanCase, suffix: suf, chordSymbol: sym };
+  }
+
+  // ---- Step 2: Classify 7th chord from triad type + 7th interval ----
+  // 9 = diminished 7th, 10 = minor 7th, 11 = major 7th
+  const seventh = intervals[3];
+  let suf7, sym7;
+  if (triadType === 'major' && seventh === 11)       { suf7 = 'maj7'; sym7 = 'maj7'; }       // Imaj7, IVmaj7
+  else if (triadType === 'major' && seventh === 10)   { suf7 = '7';    sym7 = '7'; }           // V7 (dominant)
+  else if (triadType === 'minor' && seventh === 10)   { suf7 = '7';    sym7 = 'm7'; }          // ii7, iii7, vi7
+  else if (triadType === 'minor' && seventh === 11)   { suf7 = 'maj7'; sym7 = 'm(maj7)'; }     // i(maj7) in harm/mel minor
+  else if (triadType === 'diminished' && seventh===10){ suf7 = '\u00f87'; sym7 = '\u00f87'; }   // viiø7 (half-diminished)
+  else if (triadType === 'diminished' && seventh===9) { suf7 = '\u00b07'; sym7 = '\u00b07'; }   // vii°7 (fully diminished, harm minor)
+  else if (triadType === 'augmented' && seventh===11) { suf7 = '\u207amaj7'; sym7 = 'aug(maj7)'; } // ♭III⁺maj7 in mel minor
+  else if (triadType === 'augmented' && seventh===10) { suf7 = '\u207a7'; sym7 = 'aug7'; }     // rare: augmented dominant
+  else { suf7 = '('+seventh+')'; sym7 = '('+seventh+')'; }
+
+  return { romanCase, suffix: suf7, chordSymbol: sym7 };
+}
+
+/**
+ * Convert internal note name (e.g. "Eb", "F##") to display string with Unicode symbols.
+ * Only replaces accidentals AFTER the first character to avoid turning 'B' into '♭'.
+ */
+function displayNote(name) {
+  return name[0] + name.slice(1).replace(/#/g,'\u266f').replace(/b/g,'\u266d');
+}
+
+// ======================== STATE ========================
+let heldMidiNotes = new Set();
+let heldPcs = new Set();
+let currentQ = null;
+let practiceCount = 0;
+let lastDegree = -1;
+let autoAdvanceTimer = null;
+let pendingQ = null;          // next question queued after correct answer
+let showingAnswer = false;
+
+// ---- Practice mode state ----
+let practiceMode = 'random';  // 'random' | 'sequential' | '251' | '251-all'
+let modeIndex = 0;            // position in sequential or progression sequence
+const KEY_CIRCLE_4THS = ['C','F','Bb','Eb','Ab','Db','Gb','B','E','A','D','G'];
+let keyCircleIndex = 0;
+const PROG_251 = [1, 4, 0];
+
+// ======================== MIDI ========================
+async function initMidi() {
+  const statusEl = document.getElementById('midi-status');
+  if (!navigator.requestMIDIAccess) {
+    statusEl.textContent = 'Web MIDI not supported in this browser';
+    statusEl.className = 'disconnected';
+    return;
+  }
+  try {
+    const access = await navigator.requestMIDIAccess();
+    function bindInputs() {
+      let names = [];
+      for (const input of access.inputs.values()) {
+        input.onmidimessage = handleMidiMessage;
+        names.push(input.name);
+      }
+      if (names.length > 0) {
+        statusEl.textContent = '\u25cf ' + names.join(', ');
+        statusEl.className = 'connected';
+      } else {
+        statusEl.textContent = 'No MIDI device detected';
+        statusEl.className = 'disconnected';
+      }
+    }
+    bindInputs();
+    access.onstatechange = () => bindInputs();
+  } catch (err) {
+    statusEl.textContent = 'MIDI error: ' + err.message;
+    statusEl.className = 'disconnected';
+  }
+}
+
+/**
+ * Parse incoming MIDI messages.
+ * MIDI status byte: high nibble = command, low nibble = channel.
+ *   0x90 = Note On (velocity > 0), 0x80 = Note Off.
+ *   Some keyboards send Note On with velocity=0 instead of Note Off.
+ *
+ * After updating held notes, we reduce to pitch classes (mod 12)
+ * for chord matching — voicing/octave doesn't matter.
+ */
+function handleMidiMessage(msg) {
+  const [status, note, velocity] = msg.data;
+  const cmd = status & 0xf0; // mask off channel bits to get command
+  if (cmd === 0x90 && velocity > 0) {
+    heldMidiNotes.add(note);        // Note On
+  } else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) {
+    heldMidiNotes.delete(note);     // Note Off (either explicit or velocity=0)
+  } else return;
+
+  // Reduce to pitch class set — only care about WHICH notes, not which octave
+  heldPcs = new Set([...heldMidiNotes].map(n => n % 12));
+  updatePianoHighlight();
+  updateHeldNotesDisplay();
+  checkAnswer();
+
+  // Advance to queued question when all keys released
+  if (pendingQ && currentQ && currentQ.answered && heldMidiNotes.size === 0) {
+    currentQ = pendingQ;
+    pendingQ = null;
+    showingAnswer = false;
+    renderQuestion();
+  }
+}
+
+// ======================== QUIZ LOGIC ========================
+function buildQuestion() {
+  // In circle modes, advance key at the start of each new ii-V-I cycle
+  const isCircleMode = practiceMode === '251-all';
+  if (isCircleMode && modeIndex > 0 && modeIndex % 3 === 0) {
+    keyCircleIndex = (keyCircleIndex + 1) % 12;
+    document.getElementById('key-select').value = KEY_CIRCLE_4THS[keyCircleIndex];
+  }
+
+  const rootName = document.getElementById('key-select').value;
+  const scaleName = document.getElementById('scale-select').value;
+  const chordType = getChordType();
+  const scaleIv = SCALES[scaleName];
+  const scaleNotes = getScaleNotes(rootName, scaleIv);
+  const scalePcs = getScalePcs(rootName, scaleIv);
+
+  // ---- ♭9 filter: skip degrees whose diatonic 9th = ♭9 (harsh in rootless voicing) ----
+  function isFlat9(d) {
+    if (chordType !== '7th') return false;
+    const ninthPc = scalePcs[(d + 1) % 7];
+    return ((ninthPc - scalePcs[d]) % 12 + 12) % 12 === 1;
+  }
+
+  // ---- Pick degree based on practice mode ----
+  let degree;
+  if (practiceMode === 'sequential') {
+    // Walk through degrees 0→6, skipping ♭9
+    let attempts = 0;
+    do {
+      degree = modeIndex % 7;
+      modeIndex++;
+      attempts++;
+    } while (isFlat9(degree) && attempts < 14);
+  } else if (practiceMode === '251' || isCircleMode) {
+    const posInCycle = modeIndex % 3;
+    degree = PROG_251[posInCycle];
+    const labels = ['ii', 'V', 'I'];
+    const keyLabel = isCircleMode ? displayNote(rootName) + ': ' : '';
+    modeIndex++;
+  } else {
+    // Random mode: avoid repeats, skip ♭9
+    let validDegrees = [0,1,2,3,4,5,6].filter(d => !isFlat9(d));
+    let candidates = validDegrees.filter(d => d !== lastDegree);
+    if (candidates.length === 0) candidates = validDegrees;
+    degree = candidates[Math.floor(Math.random() * candidates.length)];
+  }
+  lastDegree = degree;
+
+  // ---- Build chord by stacking diatonic 3rds ----
+  // Triad: root(+0), 3rd(+2), 5th(+4) — every other scale degree
+  // 7th adds +6 (the 7th degree)
+  const stackIdx = [0, 2, 4];
+  if (chordType === '7th') stackIdx.push(6);
+
+  const chordNotes = stackIdx.map(i => scaleNotes[(degree + i) % 7]);
+  const chordPcs = stackIdx.map(i => scalePcs[(degree + i) % 7]);
+
+  // Intervals from chord root
+  const rootPc = chordPcs[0];
+  const intervalsFromRoot = chordPcs.map(pc => ((pc - rootPc) % 12 + 12) % 12);
+
+  const quality = getChordQuality(intervalsFromRoot, chordType);
+  const prefix = getDegreePrefix(scaleIv, degree);
+  const romanBase = ROMAN[degree];
+  const romanCased = quality.romanCase === 'upper' ? romanBase : romanBase.toLowerCase();
+
+  // ---- Build valid pitch class sets for answer matching ----
+  // Accept multiple voicing styles:
+  //   Triads: all 3 notes (exact match).
+  //   7th chords — any of:
+  //     Full:     {R, 3, 5, 7}
+  //     Drop 5:   {R, 3, 7}
+  //     Rootless: {3, 5, 7, 9}   or  {3, 13, 7, 9} (dom)
+  //     Rootless drop 5: {3, 7, 9}  or  {13, 7, 9} (dom)
+  const fullSet = new Set(chordPcs);
+  const validSets = [fullSet];
+  if (chordType === '7th') {
+    const without5 = new Set(chordPcs.filter((_, i) => i !== 2));
+    validSets.push(without5);
+
+    // Rootless voicing sets (9th replaces root)
+    const ninthPc = scalePcs[(degree + 1) % 7]; // 9th = one scale degree above root
+    const thirdPc = chordPcs[1], fifthPc = chordPcs[2], seventhPc = chordPcs[3];
+
+    // Standard rootless: {3, 5, 7, 9}
+    validSets.push(new Set([thirdPc, fifthPc, seventhPc, ninthPc]));
+    // Rootless without 5: {3, 7, 9}
+    validSets.push(new Set([thirdPc, seventhPc, ninthPc]));
+
+    // Dominant chords: also accept 13th (scale degree +5) in place of 5th
+    const isDom = intervalsFromRoot[1] === 4 && intervalsFromRoot[3] === 10;
+    if (isDom) {
+      const thirteenthPc = scalePcs[(degree + 5) % 7];
+      validSets.push(new Set([thirdPc, thirteenthPc, seventhPc, ninthPc])); // {3, 13, 7, 9}
+      validSets.push(new Set([thirteenthPc, seventhPc, ninthPc]));          // {13, 7, 9}
+    }
+  }
+
+  return {
+    rootName, scaleName, chordType, degree,
+    scaleNotes, scalePcs, scaleIv,
+    chordNotes, chordPcs, intervalsFromRoot,
+    quality, prefix, romanCased,
+    validSets, answered: false
+  };
+}
+
+function nextQuestion() {
+  if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
+  showingAnswer = false;
+  if (pendingQ) {
+    currentQ = pendingQ;
+    pendingQ = null;
+  } else {
+    currentQ = buildQuestion();
+  }
+  renderQuestion();
+}
+
+/**
+ * On every MIDI note-on / note-off, check if currently held pitch classes
+ * exactly match any valid target set.
+ * - Exact match → correct (extra notes = no trigger, wrong notes = no penalty)
+ * - The user can hold extra notes; releasing them to reach exact match triggers success
+ */
+function checkAnswer() {
+  if (!currentQ || currentQ.answered) return;
+  for (const validSet of currentQ.validSets) {
+    if (setsEqual(heldPcs, validSet)) {
+      currentQ.answered = true;
+      practiceCount++;
+      document.getElementById('score').textContent = 'Practiced: ' + practiceCount;
+      document.getElementById('roman-numeral').classList.add('correct');
+      // Queue the next question and show its preview immediately
+      pendingQ = buildQuestion();
+      showPendingPreview();
+      return;
+    }
+  }
+}
+
+/** Set equality: same size and every element of a is in b. */
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const x of a) if (!b.has(x)) return false;
+  return true;
+}
+
+function showAnswer() {
+  if (!currentQ) return;
+  showingAnswer = true;
+  const q = currentQ;
+  const chordName = displayNote(q.chordNotes[0]) + q.quality.chordSymbol;
+  const noteNames = q.chordNotes.map(displayNote).join('  ');
+  document.getElementById('answer-display').innerHTML =
+    '<strong>' + chordName + '</strong> &nbsp; ( ' + noteNames + ' )';
+  document.getElementById('answer-display').style.opacity = '1';
+  updatePianoHighlight();
+  renderVoicingGuide();
+}
+
+/**
+ * Show the next question's roman numeral below the current one,
+ * at low opacity to hint it's coming next. Clears on renderQuestion().
+ */
+function showPendingPreview() {
+  const el = document.getElementById('next-preview');
+  if (!pendingQ) { el.style.opacity = '0'; return; }
+  const p = pendingQ;
+  el.innerHTML =
+    '<span class="rn-prefix">' + p.prefix + '</span>' +
+    '<span class="rn-numeral">' + p.romanCased + '</span>' +
+    '<span class="rn-suffix">' + p.quality.suffix + '</span>';
+  el.style.opacity = '0.18';
+}
+
+// ======================== UI ========================
+function getChordType() {
+  return document.querySelector('.type-btn.active').dataset.type;
+}
+
+function populateSelectors() {
+  const keySel = document.getElementById('key-select');
+  ROOTS.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r; opt.textContent = displayNote(r);
+    keySel.appendChild(opt);
+  });
+  const scaleSel = document.getElementById('scale-select');
+  Object.keys(SCALES).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    scaleSel.appendChild(opt);
+  });
+}
+
+function renderQuestion() {
+  const q = currentQ;
+  document.getElementById('scale-label').textContent =
+    displayNote(q.rootName) + ' ' + q.scaleName;
+
+  const rnEl = document.getElementById('roman-numeral');
+  rnEl.classList.remove('correct');
+  rnEl.innerHTML =
+    '<span class="rn-prefix">' + q.prefix + '</span>' +
+    '<span class="rn-numeral">' + q.romanCased + '</span>' +
+    '<span class="rn-suffix">' + q.quality.suffix + '</span>';
+
+  document.getElementById('answer-display').style.opacity = '0';
+  document.getElementById('answer-display').innerHTML = '';
+  document.getElementById('next-preview').style.opacity = '0';
+  document.getElementById('next-preview').innerHTML = '';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+  showingAnswer = false;
+  updatePianoHighlight();
+  renderVoicingGuide();
+  updateCircleOfFifths();
+  updateScaleRef();
+}
+
+function updateHeldNotesDisplay() {
+  // Show held pitch classes as note names (generic, using sharps)
+  const generic = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
+  const notes = [...heldPcs].sort((a,b) => a-b).map(pc => generic[pc]);
+  document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
+}
+
+// ======================== VOICING GUIDE ========================
+
+/**
+ * Rootless voicing formulas for jazz LH comping (Bill Evans style).
+ * The bass player covers the root; the pianist voices without it.
+ *
+ * Type A — built upward from the 3rd.  Type B — built upward from the 7th.
+ * Stored as [scaleStepOffset, functionLabel] pairs.
+ */
+const VOICING_FORMULAS = {
+  'maj7':      { a: [[2,'3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'5']] },
+  'm7':        { a: [[2,'\u266d3'],[4,'5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
+  '7':         { a: [[2,'3'],[5,'13'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[5,'13']] },
+  'm(maj7)':   { a: [[2,'\u266d3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
+  '\u00f87':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
+  '\u00b07':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d\u266d7'],[8,'9']], b: [[6,'\u266d\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
+  'aug(maj7)': { a: [[2,'3'],[4,'\u266f5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'\u266f5']] },
+  'aug7':      { a: [[2,'3'],[4,'\u266f5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[4,'\u266f5']] },
+};
+
+// ---- Mini Piano Constants ----
+const MP = { ww: 20, wh: 72, bw: 14, bh: 46, step: 22, octs: 2, start: 48 };
+const MP_W_PCS = [0,2,4,5,7,9,11];
+const MP_B_PCS = [1,3,6,8,10];
+const MP_B_AFTER = [0,1,3,4,5]; // black key sits after this white-key index
+
+/** Convert an array of raw note names (bottom→top) into MIDI notes starting near C3. */
+function notesToMidi(rawNotes) {
+  const midi = [];
+  let cur = MP.start;
+  for (const n of rawNotes) {
+    const pc = noteToPc(n);
+    while (cur % 12 !== pc) cur++;
+    midi.push(cur);
+    cur++;
+  }
+  return midi;
+}
+
+/** Render a 2-octave mini piano into `container`, highlighting the given MIDI notes.
+ *  If showHL is false, keys are drawn but not highlighted (no color, no labels). */
+function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL) {
+  if (showHL === undefined) showHL = true;
+  const totalW = MP.octs * 7 * MP.step;
+  container.style.width = totalW + 'px';
+  container.style.height = (MP.wh + 26) + 'px';
+  container.innerHTML = '';
+
+  const hlSet = new Set(midiNotes);
+  const info = {};
+  midiNotes.forEach((m, i) => { info[m] = { n: dispNames[i], f: funcLabels[i] }; });
+
+  // White keys
+  for (let oct = 0; oct < MP.octs; oct++) {
+    MP_W_PCS.forEach((pc, i) => {
+      const m = MP.start + oct * 12 + pc;
+      const x = (oct * 7 + i) * MP.step;
+      const hl = showHL && hlSet.has(m);
+      const k = document.createElement('div');
+      k.className = 'mp-key w' + (hl ? ' hl' : '');
+      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.ww + 'px;height:' + MP.wh + 'px';
+      container.appendChild(k);
+      if (hl) addPianoLabels(container, x, MP.ww, info[m]);
+    });
+  }
+  // Black keys
+  for (let oct = 0; oct < MP.octs; oct++) {
+    MP_B_PCS.forEach((pc, i) => {
+      const m = MP.start + oct * 12 + pc;
+      const x = (oct * 7 + MP_B_AFTER[i]) * MP.step + MP.step - MP.bw / 2;
+      const hl = showHL && hlSet.has(m);
+      const k = document.createElement('div');
+      k.className = 'mp-key b' + (hl ? ' hl' : '');
+      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.bw + 'px;height:' + MP.bh + 'px';
+      container.appendChild(k);
+      if (hl) addPianoLabels(container, x - 4, MP.bw + 8, info[m]);
+    });
+  }
+}
+
+function addPianoLabels(container, x, w, info) {
+  // Note name below piano
+  const nn = document.createElement('div');
+  nn.className = 'mp-lbl nn';
+  nn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 1) + 'px;width:' + w + 'px';
+  nn.textContent = info.n;
+  container.appendChild(nn);
+  // Function label below note name
+  const fn = document.createElement('div');
+  fn.className = 'mp-lbl fn';
+  fn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 13) + 'px;width:' + w + 'px';
+  fn.textContent = info.f;
+  container.appendChild(fn);
+}
+
+// ---- Interval → function label (quality-aware) ----
+const IV_FUNC = { 0:'R', 3:'\u266d3', 4:'3', 6:'\u266d5', 7:'5', 8:'\u266f5', 9:'\u266d\u266d7', 10:'\u266d7', 11:'7' };
+function ivToFunc(iv) { return IV_FUNC[iv] || '?'; }
+
+// ---- Build ALL voicing options for the current question ----
+function getAllVoicings(q) {
+  if (q.chordType === 'triad') {
+    const n = q.chordNotes;
+    return [
+      { id: 'root', label: 'Root pos.', raw: [n[0],n[1],n[2]], funcs: ['R','3','5'] },
+      { id: 'inv1', label: '1st inv.',  raw: [n[1],n[2],n[0]], funcs: ['3','5','R'] },
+      { id: 'inv2', label: '2nd inv.',  raw: [n[2],n[0],n[1]], funcs: ['5','R','3'] },
+    ];
+  }
+
+  // 7th chord — build function labels from intervals
+  const ivs = q.intervalsFromRoot;
+  const fR = 'R', f3 = ivToFunc(ivs[1]), f5 = ivToFunc(ivs[2]), f7 = ivToFunc(ivs[3]);
+  const n = q.chordNotes; // [root, 3rd, 5th, 7th]
+
+  const voicings = [
+    { id: 'full',  label: 'Full',    raw: [n[0],n[1],n[2],n[3]], funcs: [fR,f3,f5,f7] },
+    { id: 'drop5', label: 'Drop 5',  raw: [n[0],n[1],n[3]],      funcs: [fR,f3,f7] },
+  ];
+
+  // Rootless voicings from formulas
+  const sym = q.quality.chordSymbol;
+  const formula = VOICING_FORMULAS[sym];
+  if (formula) {
+    function resolve(slots) {
+      return {
+        raw:   slots.map(([d]) => q.scaleNotes[(q.degree + d) % 7]),
+        funcs: slots.map(([, f]) => f)
+      };
+    }
+    const rA = resolve(formula.a), rB = resolve(formula.b);
+    voicings.push({ id: 'rootlessA', label: 'Rootless A', ...rA });
+    voicings.push({ id: 'rootlessB', label: 'Rootless B', ...rB });
+  }
+
+  return voicings;
+}
+
+// ---- Voicing guide state ----
+let voicingHighlight = true; // whether piano keys are highlighted
+let cachedVoicings = []; // current question's voicings
+
+// ---- Build one voicing column (label + mini piano) ----
+function buildVoicingCol(label, rawNotes, funcLabels) {
+  const col = document.createElement('div');
+  col.className = 'voicing-col';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'voicing-label';
+  lbl.textContent = label;
+  col.appendChild(lbl);
+
+  const piano = document.createElement('div');
+  piano.className = 'mini-piano';
+  const midi = notesToMidi(rawNotes);
+  const disp = rawNotes.map(displayNote);
+  renderMiniPiano(piano, midi, disp, funcLabels, voicingHighlight);
+  col.appendChild(piano);
+
+  return col;
+}
+
+function renderVoicingGuide() {
+  const togEl = document.getElementById('voicing-toggles');
+  const pianoEl = document.getElementById('voicing-pianos');
+  togEl.innerHTML = '';
+  pianoEl.innerHTML = '';
+  if (!currentQ) return;
+
+  cachedVoicings = getAllVoicings(currentQ);
+
+  // Single highlight toggle button
+  const btn = document.createElement('button');
+  btn.className = 'vtog' + (voicingHighlight ? ' on' : '');
+  btn.textContent = voicingHighlight ? 'Highlight On' : 'Highlight Off';
+  btn.addEventListener('click', () => {
+    voicingHighlight = !voicingHighlight;
+    btn.className = 'vtog' + (voicingHighlight ? ' on' : '');
+    btn.textContent = voicingHighlight ? 'Highlight On' : 'Highlight Off';
+    renderVoicingPianos();
+  });
+  togEl.appendChild(btn);
+
+  // Show all voicings
+  renderVoicingPianos();
+}
+
+function renderVoicingPianos() {
+  const pianoEl = document.getElementById('voicing-pianos');
+  pianoEl.innerHTML = '';
+  cachedVoicings.forEach(v => {
+    pianoEl.appendChild(buildVoicingCol(v.label, v.raw, v.funcs));
+  });
+}
+
+function updatePianoHighlight() {
+  // No-op: kept for compatibility with MIDI handler calls.
+}
+
+// ======================== CIRCLE OF FIFTHS ========================
+const COF_MAJOR = ['C','G','D','A','E','B','Gb','Db','Ab','Eb','Bb','F'];
+const COF_MINOR = ['Am','Em','Bm','F\u266fm','C\u266fm','G\u266fm','E\u266dm','B\u266dm','Fm','Cm','Gm','Dm'];
+
+function buildCircleOfFifths() {
+  const svg = document.getElementById('cof-svg');
+  const cx = 180, cy = 180, rOuter = 152, rInner = 110, rDot = 163;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  // Outer ring
+  const ring1 = document.createElementNS(ns, 'circle');
+  ring1.setAttribute('cx', cx); ring1.setAttribute('cy', cy);
+  ring1.setAttribute('r', rOuter); ring1.setAttribute('class', 'cof-ring');
+  svg.appendChild(ring1);
+
+  // Inner ring
+  const ring2 = document.createElementNS(ns, 'circle');
+  ring2.setAttribute('cx', cx); ring2.setAttribute('cy', cy);
+  ring2.setAttribute('r', rInner); ring2.setAttribute('class', 'cof-ring');
+  svg.appendChild(ring2);
+
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * 30 - 90) * Math.PI / 180; // start at 12 o'clock
+
+    // Dot on outer ring
+    const dot = document.createElementNS(ns, 'circle');
+    dot.setAttribute('cx', cx + rDot * Math.cos(angle));
+    dot.setAttribute('cy', cy + rDot * Math.sin(angle));
+    dot.setAttribute('r', 2.5);
+    dot.setAttribute('class', 'cof-dot');
+    dot.setAttribute('data-cof', i);
+    svg.appendChild(dot);
+
+    // Major key label (outer)
+    const major = document.createElementNS(ns, 'text');
+    const mR = rOuter + 2; // just outside ring, but inside viewBox
+    // Push labels slightly outward at top/bottom for readability
+    const labelR = 133;
+    major.setAttribute('x', cx + labelR * Math.cos(angle));
+    major.setAttribute('y', cy + labelR * Math.sin(angle));
+    major.setAttribute('class', 'cof-key');
+    major.setAttribute('data-cof', i);
+    major.textContent = displayNote(COF_MAJOR[i]);
+    svg.appendChild(major);
+
+    // Minor key label (inner)
+    const minor = document.createElementNS(ns, 'text');
+    const minorR = 88;
+    minor.setAttribute('x', cx + minorR * Math.cos(angle));
+    minor.setAttribute('y', cy + minorR * Math.sin(angle));
+    minor.setAttribute('class', 'cof-minor');
+    minor.setAttribute('data-cof', i);
+    minor.textContent = COF_MINOR[i];
+    svg.appendChild(minor);
+  }
+}
+
+function updateCircleOfFifths() {
+  const curKey = document.getElementById('key-select').value;
+  // Map current key to COF index
+  // Need to handle enharmonic: F# → index 5 (same as Gb)
+  const keyPc = noteToPc(curKey);
+  const cofPcs = COF_MAJOR.map(noteToPc);
+  const activeIdx = cofPcs.indexOf(keyPc);
+
+  document.querySelectorAll('#cof-svg .cof-key').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
+  });
+  document.querySelectorAll('#cof-svg .cof-minor').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
+  });
+  document.querySelectorAll('#cof-svg .cof-dot').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
+  });
+}
+
+// ======================== SCALE REFERENCE (Mini Piano) ========================
+let scaleRefHighlight = true;
+
+function initScaleRefToggle() {
+  const btn = document.getElementById('scale-ref-toggle');
+  btn.addEventListener('click', () => {
+    scaleRefHighlight = !scaleRefHighlight;
+    btn.className = 'vtog' + (scaleRefHighlight ? ' on' : '');
+    btn.textContent = scaleRefHighlight ? 'Highlight On' : 'Highlight Off';
+    updateScaleRef();
+  });
+}
+
+/**
+ * Render scale reference as a mini piano showing all 7 scale degrees.
+ * Always visible; highlight toggle controls whether keys are colored.
+ */
+function updateScaleRef() {
+  if (!currentQ) return;
+  const q = currentQ;
+  const container = document.getElementById('scale-ref');
+  container.innerHTML = '';
+
+  const piano = document.createElement('div');
+  piano.className = 'mini-piano';
+
+  const totalW = MP.octs * 7 * MP.step;
+  piano.style.width = totalW + 'px';
+  piano.style.height = (MP.wh + 26) + 'px';
+
+  // Build MIDI notes for scale degrees
+  const scaleMidi = [];
+  let cur = MP.start;
+  for (let d = 0; d < 7; d++) {
+    const pc = q.scalePcs[d];
+    while (cur % 12 !== pc) cur++;
+    scaleMidi.push(cur);
+  }
+  const octaveMidi = scaleMidi[0] + 12;
+  if (octaveMidi < MP.start + MP.octs * 12) scaleMidi.push(octaveMidi);
+
+  const hlSet = new Set(scaleMidi);
+  const showHL = scaleRefHighlight;
+
+  // Draw white keys
+  for (let oct = 0; oct < MP.octs; oct++) {
+    MP_W_PCS.forEach((pc, i) => {
+      const m = MP.start + oct * 12 + pc;
+      const x = (oct * 7 + i) * MP.step;
+      const hl = showHL && hlSet.has(m);
+      const k = document.createElement('div');
+      k.className = 'mp-key w' + (hl ? ' hl' : '');
+      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.ww + 'px;height:' + MP.wh + 'px';
+      piano.appendChild(k);
+      if (hl) {
+        const idx = scaleMidi.indexOf(m);
+        const degNum = (idx % 7) + 1;
+        const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
+        addScaleRefLabels(piano, x, MP.ww, noteName, degNum);
+      }
+    });
+  }
+  // Draw black keys
+  for (let oct = 0; oct < MP.octs; oct++) {
+    MP_B_PCS.forEach((pc, i) => {
+      const m = MP.start + oct * 12 + pc;
+      const x = (oct * 7 + MP_B_AFTER[i]) * MP.step + MP.step - MP.bw / 2;
+      const hl = showHL && hlSet.has(m);
+      const k = document.createElement('div');
+      k.className = 'mp-key b' + (hl ? ' hl' : '');
+      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.bw + 'px;height:' + MP.bh + 'px';
+      piano.appendChild(k);
+      if (hl) {
+        const idx = scaleMidi.indexOf(m);
+        const degNum = (idx % 7) + 1;
+        const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
+        addScaleRefLabels(piano, x - 4, MP.bw + 8, noteName, degNum);
+      }
+    });
+  }
+  container.appendChild(piano);
+}
+
+function addScaleRefLabels(container, x, w, noteName, degNum) {
+  const nn = document.createElement('div');
+  nn.className = 'mp-lbl nn';
+  nn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 1) + 'px;width:' + w + 'px';
+  nn.textContent = noteName;
+  container.appendChild(nn);
+  const fn = document.createElement('div');
+  fn.className = 'mp-lbl fn';
+  fn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 13) + 'px;width:' + w + 'px';
+  fn.textContent = degNum;
+  container.appendChild(fn);
+}
+
+// ======================== MODE HELPERS ========================
+function setMode(mode) {
+  practiceMode = mode;
+  modeIndex = 0;
+  // For circle modes, sync keyCircleIndex to current key selector
+  if (mode === '251-all') {
+    const curKey = document.getElementById('key-select').value;
+    const idx = KEY_CIRCLE_4THS.indexOf(curKey);
+    keyCircleIndex = idx >= 0 ? idx : 0;
+  }
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.mode-btn[data-mode="' + mode + '"]').classList.add('active');
+  nextQuestion();
+}
+
+// ======================== EVENT HANDLERS ========================
+function setupEvents() {
+  // Chord type buttons
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      modeIndex = 0;  // reset progression on chord type change
+      nextQuestion();
+    });
+  });
+
+  // Mode buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  // Key / scale change
+  document.getElementById('key-select').addEventListener('change', () => { modeIndex = 0; nextQuestion(); });
+  document.getElementById('scale-select').addEventListener('change', () => { modeIndex = 0; nextQuestion(); });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); nextQuestion(); }
+    else if (e.code === 'KeyA') { showAnswer(); }
+  });
+}
+
+// ======================== INIT ========================
+function init() {
+  populateSelectors();
+  buildCircleOfFifths();
+  initScaleRefToggle();
+  setupEvents();
+  initMidi();
+  nextQuestion();
+  practiceCount = 0;
+  document.getElementById('score').textContent = 'Practiced: 0';
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
