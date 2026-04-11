@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jazz Scale Chord Trainer</title>
 <style>
-:root{--grn:#658A6E;--grn-l:#8BAF92;--grn-xl:#B5CCBA;--bg:#F5F2EB;--card:#EDE9E1;--txt:#3a3a3a;--txt2:#918a80;--txt3:#c0b9af;--border:#ddd8cf;--border-l:#e6e2da}
+:root{--grn:#658A6E;--grn-l:#8BAF92;--grn-xl:#B5CCBA;--hl:#EAD279;--hl-l:#F5E9B3;--bg:#F5F2EB;--card:#EDE9E1;--txt:#3a3a3a;--txt2:#918a80;--txt3:#c0b9af;--border:#ddd8cf;--border-l:#e6e2da}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'SF Pro Display',-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;padding:28px 32px}
 #app{width:100%;max-width:1280px;display:flex;flex-direction:column;gap:24px}
@@ -60,19 +60,23 @@ select:hover{border-color:var(--grn-l)}
 #held-notes{text-align:center;font-size:.82rem;color:var(--txt3);min-height:1.2em}
 /* ---- Voicing section (right col) ---- */
 #voicing-section{padding:0}
-#voicing-pianos{display:flex;flex-direction:column;align-items:center;gap:16px;min-height:40px}
-.voicing-col{display:flex;align-items:center;gap:10px;width:100%}
-.voicing-label{font-size:.7rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;min-width:76px;text-align:right}
+#voicing-pianos{display:flex;flex-direction:column;align-items:flex-start;gap:18px;min-height:40px}
+.voicing-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%}
+.voicing-label{font-size:.7rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;text-align:left}
 /* ---- Mini piano ---- */
 .mini-piano{position:relative;user-select:none}
 .mp-key{position:absolute;border-radius:0 0 3px 3px}
 .mp-key.w{background:#FAF8F4;border:1px solid #d8d4cc;z-index:1}
 .mp-key.b{background:#4a4a4a;border:1px solid #3a3a3a;z-index:2}
-.mp-key.w.hl{background:var(--grn-l)}
-.mp-key.b.hl{background:var(--grn)}
-.mp-lbl{position:absolute;z-index:3;text-align:center;pointer-events:none;font-size:.58rem;white-space:nowrap}
-.mp-lbl.fn{color:var(--grn);font-weight:600}
-.mp-lbl.nn{color:#918a80}
+.mp-key.hl{background:var(--hl)}
+.mp-key.hl.alt{background:var(--hl-l)}
+.mp-lbl{position:absolute;z-index:3;text-align:center;pointer-events:none;white-space:nowrap;overflow:visible;line-height:1;color:#2a2a2a;text-shadow:0 0 1px rgba(255,255,255,.55)}
+.mp-lbl.w{font-size:.62rem}
+.mp-lbl.b{font-size:.56rem}
+.mp-lbl.nn{font-weight:500}
+.mp-lbl.fn{font-weight:700;color:#1e1e1e}
+/* Alt (5/13 "pick-one"): italic + dimmed, uniform across w/b */
+.mp-lbl.alt{font-style:italic;opacity:.68}
 /* ---- CoF (left col) ---- */
 #cof-section{display:flex;justify-content:center;padding:0}
 #cof-svg text{font-family:'SF Pro Display',-apple-system,sans-serif;pointer-events:none}
@@ -195,7 +199,6 @@ const SCALES = {
   'Dorian':               [0,2,3,5,7,9,10],
   'Mixolydian':           [0,2,4,5,7,9,10],
   'Lydian':               [0,2,4,6,7,9,11],
-  'Natural Minor':        [0,2,3,5,7,8,10],
   'Harmonic Minor':       [0,2,3,5,7,8,11],
   'Melodic Minor':        [0,2,3,5,7,9,11]
 };
@@ -501,7 +504,7 @@ function buildQuestion() {
     // Rootless without 5: {3, 7, 9}
     validSets.push(new Set([thirdPc, seventhPc, ninthPc]));
 
-    // Dominant chords: also accept 13th (scale degree +5) in place of 5th
+    // Dominant chords: also accept diatonic 13th (parent-scale degree +5) in place of 5th
     const isDom = intervalsFromRoot[1] === 4 && intervalsFromRoot[3] === 10;
     if (isDom) {
       const thirteenthPc = scalePcs[(degree + 5) % 7];
@@ -652,7 +655,7 @@ function updateHeldNotesDisplay() {
 const VOICING_FORMULAS = {
   'maj7':      { a: [[2,'3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'5']] },
   'm7':        { a: [[2,'\u266d3'],[4,'5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
-  '7':         { a: [[2,'3'],[5,'13'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[5,'13']] },
+  '7':         { a: [[2,'3'],[4,'5',true],[5,'13',true],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[4,'5',true],[5,'13',true]] },
   'm(maj7)':   { a: [[2,'\u266d3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
   '\u00f87':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
   '\u00b07':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d\u266d7'],[8,'9']], b: [[6,'\u266d\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
@@ -661,7 +664,7 @@ const VOICING_FORMULAS = {
 };
 
 // ---- Mini Piano Constants ----
-const MP = { ww: 20, wh: 72, bw: 14, bh: 46, step: 22, octs: 2, start: 48 };
+const MP = { ww: 24, wh: 88, bw: 17, bh: 56, step: 27, octs: 2, start: 48 };
 const MP_W_PCS = [0,2,4,5,7,9,11];
 const MP_B_PCS = [1,3,6,8,10];
 const MP_B_AFTER = [0,1,3,4,5]; // black key sits after this white-key index
@@ -681,14 +684,15 @@ function notesToMidi(rawNotes) {
 
 /** Render a 2-octave mini piano into `container`, highlighting the given MIDI notes.
  *  If showHL is false, keys are drawn but not highlighted (no color, no labels). */
-function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL) {
+function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL, altMidiNotes) {
   if (showHL === undefined) showHL = true;
   const totalW = MP.octs * 7 * MP.step;
   container.style.width = totalW + 'px';
-  container.style.height = (MP.wh + 26) + 'px';
+  container.style.height = MP.wh + 'px';
   container.innerHTML = '';
 
   const hlSet = new Set(midiNotes);
+  const altSet = new Set(altMidiNotes || []);
   const info = {};
   midiNotes.forEach((m, i) => { info[m] = { n: dispNames[i], f: funcLabels[i] }; });
 
@@ -698,11 +702,12 @@ function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL) {
       const m = MP.start + oct * 12 + pc;
       const x = (oct * 7 + i) * MP.step;
       const hl = showHL && hlSet.has(m);
+      const isAlt = hl && altSet.has(m);
       const k = document.createElement('div');
-      k.className = 'mp-key w' + (hl ? ' hl' : '');
+      k.className = 'mp-key w' + (hl ? ' hl' : '') + (isAlt ? ' alt' : '');
       k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.ww + 'px;height:' + MP.wh + 'px';
       container.appendChild(k);
-      if (hl) addPianoLabels(container, x, MP.ww, info[m]);
+      if (hl) addPianoLabels(container, x, MP.ww, info[m], isAlt, 'w');
     });
   }
   // Black keys
@@ -711,26 +716,33 @@ function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL) {
       const m = MP.start + oct * 12 + pc;
       const x = (oct * 7 + MP_B_AFTER[i]) * MP.step + MP.step - MP.bw / 2;
       const hl = showHL && hlSet.has(m);
+      const isAlt = hl && altSet.has(m);
       const k = document.createElement('div');
-      k.className = 'mp-key b' + (hl ? ' hl' : '');
+      k.className = 'mp-key b' + (hl ? ' hl' : '') + (isAlt ? ' alt' : '');
       k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.bw + 'px;height:' + MP.bh + 'px';
       container.appendChild(k);
-      if (hl) addPianoLabels(container, x - 4, MP.bw + 8, info[m]);
+      if (hl) addPianoLabels(container, x, MP.bw, info[m], isAlt, 'b');
     });
   }
 }
 
-function addPianoLabels(container, x, w, info) {
-  // Note name below piano
+function addPianoLabels(container, x, w, info, isAlt, keyType) {
+  const altCls = isAlt ? ' alt' : '';
+  const kCls = ' ' + keyType; // ' w' or ' b'
+  // Position labels near bottom of each key
+  const keyBottom = (keyType === 'w') ? MP.wh : MP.bh;
+  const nnTop = keyBottom - 24;
+  const fnTop = keyBottom - 12;
+  // Note name (upper line)
   const nn = document.createElement('div');
-  nn.className = 'mp-lbl nn';
-  nn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 1) + 'px;width:' + w + 'px';
+  nn.className = 'mp-lbl nn' + kCls + altCls;
+  nn.style.cssText = 'left:' + x + 'px;top:' + nnTop + 'px;width:' + w + 'px';
   nn.textContent = info.n;
   container.appendChild(nn);
-  // Function label below note name
+  // Function label (lower line)
   const fn = document.createElement('div');
-  fn.className = 'mp-lbl fn';
-  fn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 13) + 'px;width:' + w + 'px';
+  fn.className = 'mp-lbl fn' + kCls + altCls;
+  fn.style.cssText = 'left:' + x + 'px;top:' + fnTop + 'px;width:' + w + 'px';
   fn.textContent = info.f;
   container.appendChild(fn);
 }
@@ -765,10 +777,12 @@ function getAllVoicings(q) {
   const formula = VOICING_FORMULAS[sym];
   if (formula) {
     function resolve(slots) {
-      return {
-        raw:   slots.map(([d]) => q.scaleNotes[(q.degree + d) % 7]),
-        funcs: slots.map(([, f]) => f)
-      };
+      const raw = slots.map(s => q.scaleNotes[(q.degree + s[0]) % 7]);
+      const funcs = slots.map(s => s[1]);
+      const altIdx = slots
+        .map((s, i) => (s[2] ? i : -1))
+        .filter(i => i >= 0);
+      return { raw, funcs, altIdx };
     }
     const rA = resolve(formula.a), rB = resolve(formula.b);
     voicings.push({ id: 'rootlessA', label: 'Rootless A', ...rA });
@@ -783,7 +797,7 @@ let voicingHighlight = true; // whether piano keys are highlighted
 let cachedVoicings = []; // current question's voicings
 
 // ---- Build one voicing column (label + mini piano) ----
-function buildVoicingCol(label, rawNotes, funcLabels) {
+function buildVoicingCol(label, rawNotes, funcLabels, altIdx) {
   const col = document.createElement('div');
   col.className = 'voicing-col';
 
@@ -796,7 +810,8 @@ function buildVoicingCol(label, rawNotes, funcLabels) {
   piano.className = 'mini-piano';
   const midi = notesToMidi(rawNotes);
   const disp = rawNotes.map(displayNote);
-  renderMiniPiano(piano, midi, disp, funcLabels, voicingHighlight);
+  const altMidi = (altIdx || []).map(i => midi[i]);
+  renderMiniPiano(piano, midi, disp, funcLabels, voicingHighlight, altMidi);
   col.appendChild(piano);
 
   return col;
@@ -831,7 +846,7 @@ function renderVoicingPianos() {
   const pianoEl = document.getElementById('voicing-pianos');
   pianoEl.innerHTML = '';
   cachedVoicings.forEach(v => {
-    pianoEl.appendChild(buildVoicingCol(v.label, v.raw, v.funcs));
+    pianoEl.appendChild(buildVoicingCol(v.label, v.raw, v.funcs, v.altIdx));
   });
 }
 
@@ -943,7 +958,7 @@ function updateScaleRef() {
 
   const totalW = MP.octs * 7 * MP.step;
   piano.style.width = totalW + 'px';
-  piano.style.height = (MP.wh + 26) + 'px';
+  piano.style.height = MP.wh + 'px';
 
   // Build MIDI notes for scale degrees
   const scaleMidi = [];
@@ -973,7 +988,7 @@ function updateScaleRef() {
         const idx = scaleMidi.indexOf(m);
         const degNum = (idx % 7) + 1;
         const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
-        addScaleRefLabels(piano, x, MP.ww, noteName, degNum);
+        addScaleRefLabels(piano, x, MP.ww, noteName, degNum, 'w');
       }
     });
   }
@@ -991,22 +1006,26 @@ function updateScaleRef() {
         const idx = scaleMidi.indexOf(m);
         const degNum = (idx % 7) + 1;
         const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
-        addScaleRefLabels(piano, x - 4, MP.bw + 8, noteName, degNum);
+        addScaleRefLabels(piano, x, MP.bw, noteName, degNum, 'b');
       }
     });
   }
   container.appendChild(piano);
 }
 
-function addScaleRefLabels(container, x, w, noteName, degNum) {
+function addScaleRefLabels(container, x, w, noteName, degNum, keyType) {
+  const kCls = ' ' + keyType; // ' w' or ' b'
+  const keyBottom = (keyType === 'w') ? MP.wh : MP.bh;
+  const nnTop = keyBottom - 24;
+  const fnTop = keyBottom - 12;
   const nn = document.createElement('div');
-  nn.className = 'mp-lbl nn';
-  nn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 1) + 'px;width:' + w + 'px';
+  nn.className = 'mp-lbl nn' + kCls;
+  nn.style.cssText = 'left:' + x + 'px;top:' + nnTop + 'px;width:' + w + 'px';
   nn.textContent = noteName;
   container.appendChild(nn);
   const fn = document.createElement('div');
-  fn.className = 'mp-lbl fn';
-  fn.style.cssText = 'left:' + x + 'px;top:' + (MP.wh + 13) + 'px;width:' + w + 'px';
+  fn.className = 'mp-lbl fn' + kCls;
+  fn.style.cssText = 'left:' + x + 'px;top:' + fnTop + 'px;width:' + w + 'px';
   fn.textContent = degNum;
   container.appendChild(fn);
 }
