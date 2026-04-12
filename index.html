@@ -41,7 +41,6 @@ select:hover{border-color:var(--grn-l)}
 #scale-label{font-size:.88rem;color:var(--txt2);margin-bottom:10px;letter-spacing:2px;font-weight:400}
 #roman-numeral{font-size:5.5rem;font-family:Georgia,'Times New Roman',serif;line-height:1;margin:16px 0 24px;min-height:5.5rem;display:flex;align-items:center;justify-content:center;transition:color .3s;color:var(--txt)}
 .rn-prefix{font-size:.55em;margin-right:2px;position:relative;top:-.05em}
-.rn-numeral{}
 .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:2px}
 #roman-numeral.correct{color:var(--grn)}
 #next-preview{font-family:Georgia,'Times New Roman',serif;font-size:2rem;color:var(--txt);opacity:0;min-height:2.2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
@@ -343,7 +342,7 @@ let heldPcs = new Set();
 let currentQ = null;
 let practiceCount = 0;
 let lastDegree = -1;
-let autoAdvanceTimer = null;
+
 let pendingQ = null;          // next question queued after correct answer
 let showingAnswer = false;
 
@@ -406,7 +405,7 @@ function handleMidiMessage(msg) {
 
   // Reduce to pitch class set — only care about WHICH notes, not which octave
   heldPcs = new Set([...heldMidiNotes].map(n => n % 12));
-  updatePianoHighlight();
+
   updateHeldNotesDisplay();
   checkAnswer();
 
@@ -443,8 +442,6 @@ function buildQuestion() {
   } else if (practiceMode === '251' || isCircleMode) {
     const posInCycle = modeIndex % 3;
     degree = PROG_251[posInCycle];
-    const labels = ['ii', 'V', 'I'];
-    const keyLabel = isCircleMode ? displayNote(rootName) + ': ' : '';
     modeIndex++;
   } else {
     // Random mode: avoid repeats
@@ -513,7 +510,6 @@ function buildQuestion() {
 }
 
 function nextQuestion() {
-  if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
   showingAnswer = false;
   if (pendingQ) {
     currentQ = pendingQ;
@@ -562,7 +558,7 @@ function showAnswer() {
   document.getElementById('answer-display').innerHTML =
     '<strong>' + chordName + '</strong> &nbsp; ( ' + noteNames + ' )';
   document.getElementById('answer-display').style.opacity = '1';
-  updatePianoHighlight();
+
   renderVoicingGuide();
 }
 
@@ -620,7 +616,7 @@ function renderQuestion() {
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
   showingAnswer = false;
-  updatePianoHighlight();
+
   renderVoicingGuide();
   updateCircleOfFifths();
   updateScaleRef();
@@ -840,9 +836,7 @@ function renderVoicingPianos() {
   });
 }
 
-function updatePianoHighlight() {
-  // No-op: kept for compatibility with MIDI handler calls.
-}
+
 
 // ======================== CIRCLE OF FIFTHS ========================
 const COF_MAJOR = ['C','G','D','A','E','B','Gb','Db','Ab','Eb','Bb','F'];
