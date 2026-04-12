@@ -97,6 +97,9 @@ select:hover{border-color:var(--grn-l)}
 .vtog{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:4px 14px;font-size:.75rem;cursor:pointer;transition:all .2s}
 .vtog.on{background:var(--grn);color:#fff;border-color:var(--grn)}
 .vtog:hover:not(.on){border-color:var(--grn-l);color:var(--txt)}
+/* ---- Toast notification ---- */
+#toast{position:fixed;top:32px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:100;box-shadow:0 4px 16px rgba(101,138,110,.3)}
+#toast.show{opacity:1}
 /* ---- Responsive ---- */
 @media(max-width:960px){
   #main-columns{grid-template-columns:1fr;gap:16px}
@@ -107,6 +110,7 @@ select:hover{border-color:var(--grn-l)}
 </style>
 </head>
 <body>
+<div id="toast"></div>
 <div id="app">
   <header>
     <h1>Jazz Scale Chord Trainer</h1>
@@ -431,23 +435,11 @@ function buildQuestion() {
   const scaleNotes = getScaleNotes(rootName, scaleIv);
   const scalePcs = getScalePcs(rootName, scaleIv);
 
-  // ---- ♭9 filter: skip degrees whose diatonic 9th = ♭9 (harsh in rootless voicing) ----
-  function isFlat9(d) {
-    if (chordType !== '7th') return false;
-    const ninthPc = scalePcs[(d + 1) % 7];
-    return ((ninthPc - scalePcs[d]) % 12 + 12) % 12 === 1;
-  }
-
   // ---- Pick degree based on practice mode ----
   let degree;
   if (practiceMode === 'sequential') {
-    // Walk through degrees 0→6, skipping ♭9
-    let attempts = 0;
-    do {
-      degree = modeIndex % 7;
-      modeIndex++;
-      attempts++;
-    } while (isFlat9(degree) && attempts < 14);
+    degree = modeIndex % 7;
+    modeIndex++;
   } else if (practiceMode === '251' || isCircleMode) {
     const posInCycle = modeIndex % 3;
     degree = PROG_251[posInCycle];
@@ -455,10 +447,8 @@ function buildQuestion() {
     const keyLabel = isCircleMode ? displayNote(rootName) + ': ' : '';
     modeIndex++;
   } else {
-    // Random mode: avoid repeats, skip ♭9
-    let validDegrees = [0,1,2,3,4,5,6].filter(d => !isFlat9(d));
-    let candidates = validDegrees.filter(d => d !== lastDegree);
-    if (candidates.length === 0) candidates = validDegrees;
+    // Random mode: avoid repeats
+    let candidates = [0,1,2,3,4,5,6].filter(d => d !== lastDegree);
     degree = candidates[Math.floor(Math.random() * candidates.length)];
   }
   lastDegree = degree;
@@ -1032,6 +1022,14 @@ function addScaleRefLabels(container, x, w, noteName, degNum, keyType) {
 
 // ======================== MODE HELPERS ========================
 function setMode(mode) {
+  // ii-V-I modes only apply to Major — auto-switch scale if needed
+  if (mode === '251' || mode === '251-all') {
+    const scaleSel = document.getElementById('scale-select');
+    if (scaleSel.value !== 'Major (Ionian)') {
+      scaleSel.value = 'Major (Ionian)';
+      showScaleNotice();
+    }
+  }
   practiceMode = mode;
   modeIndex = 0;
   // For circle modes, sync keyCircleIndex to current key selector
@@ -1043,6 +1041,19 @@ function setMode(mode) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.mode-btn[data-mode="' + mode + '"]').classList.add('active');
   nextQuestion();
+}
+
+/** Toast notification for brief messages */
+function showToast(msg, duration) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), duration || 2000);
+}
+
+function showScaleNotice() {
+  showToast('Switched to Major (Ionian)');
 }
 
 // ======================== EVENT HANDLERS ========================
