@@ -623,9 +623,17 @@ function renderQuestion() {
 }
 
 function updateHeldNotesDisplay() {
-  // Show held pitch classes as note names (generic, using sharps)
-  const generic = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
-  const notes = [...heldPcs].sort((a,b) => a-b).map(pc => generic[pc]);
+  // Build pc→name map from current scale context for correct enharmonic spelling
+  const pcName = {};
+  if (currentQ) {
+    currentQ.scalePcs.forEach((pc, i) => { pcName[pc] = displayNote(currentQ.scaleNotes[i]); });
+  }
+  // Fallback: prefer flats if root uses flats, else sharps
+  const useFl = currentQ && currentQ.rootName.length > 1 && currentQ.rootName[1] === 'b';
+  const sharps = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
+  const flats  = ['C','D\u266d','D','E\u266d','E','F','G\u266d','G','A\u266d','A','B\u266d','B'];
+  const fallback = useFl ? flats : sharps;
+  const notes = [...heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
   document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
 }
 
