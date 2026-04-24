@@ -1076,7 +1076,16 @@ function setupEvents() {
   });
 
   // Key / scale change
-  document.getElementById('key-select').addEventListener('change', () => { modeIndex = 0; nextQuestion(); });
+  document.getElementById('key-select').addEventListener('change', () => {
+    modeIndex = 0;
+    // Sync circle index when key is manually changed during 251-all mode
+    if (practiceMode === '251-all') {
+      const curKey = document.getElementById('key-select').value;
+      const idx = KEY_CIRCLE_4THS.indexOf(curKey);
+      keyCircleIndex = idx >= 0 ? idx : 0;
+    }
+    nextQuestion();
+  });
   document.getElementById('scale-select').addEventListener('change', () => { modeIndex = 0; nextQuestion(); });
 
   // Keyboard shortcuts
