@@ -671,13 +671,7 @@ function updateHeldNotesDisplay() {
   const flats  = ['C','D\u266d','D','E\u266d','E','F','G\u266d','G','A\u266d','A','B\u266d','B'];
   const fallback = useFl ? flats : sharps;
   const notes = [...heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
-  // Prepend chord name (e.g. "Bbmaj7") before held note names
-  const chordLabel = currentQ
-    ? displayNote(currentQ.chordNotes[0]) + currentQ.quality.chordSymbol
-    : '';
-  const el = document.getElementById('held-notes');
-  if (heldPcs.size === 0) { el.textContent = ''; return; }
-  el.textContent = chordLabel ? chordLabel + '    ' + notes.join('  ') : notes.join('  ');
+  document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
 }
 
 // ======================== VOICING GUIDE ========================
