@@ -169,6 +169,7 @@ select:hover{border-color:var(--grn-l)}
         <div id="roman-numeral"><span class="rn-numeral" style="color:#ccc">—</span></div>
         <div id="next-preview"></div>
         <div id="action-btns">
+          <button id="prev-btn" onclick="goToPrev()">Prev</button>
           <button id="show-btn" onclick="showAnswer()">Show Answer</button>
           <button id="next-btn" onclick="nextQuestion()">Next (Space)</button>
         </div>
@@ -600,6 +601,18 @@ function showPrevPreview() {
   el.style.opacity = '0.18';
 }
 
+function goToPrev() {
+  if (!prevQ) return;
+  // Current becomes next (queue it), prev becomes current
+  pendingQ = currentQ;
+  currentQ = prevQ;
+  prevQ = null;
+  currentQ.answered = false;
+  showingAnswer = false;
+  renderQuestion();
+  showPendingPreview();
+}
+
 // ======================== UI ========================
 function getChordType() {
   return document.querySelector('.type-btn.active').dataset.type;
@@ -658,7 +671,13 @@ function updateHeldNotesDisplay() {
   const flats  = ['C','D\u266d','D','E\u266d','E','F','G\u266d','G','A\u266d','A','B\u266d','B'];
   const fallback = useFl ? flats : sharps;
   const notes = [...heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
-  document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
+  // Prepend chord name (e.g. "Bbmaj7") before held note names
+  const chordLabel = currentQ
+    ? displayNote(currentQ.chordNotes[0]) + currentQ.quality.chordSymbol
+    : '';
+  const el = document.getElementById('held-notes');
+  if (heldPcs.size === 0) { el.textContent = ''; return; }
+  el.textContent = chordLabel ? chordLabel + '    ' + notes.join('  ') : notes.join('  ');
 }
 
 // ======================== VOICING GUIDE ========================
