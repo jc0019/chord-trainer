@@ -43,9 +43,11 @@ select:hover{border-color:var(--grn-l)}
 .rn-prefix{font-size:.55em;margin-right:2px;position:relative;top:-.05em}
 .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:2px}
 #roman-numeral.correct{color:var(--grn)}
-#next-preview{font-family:Georgia,'Times New Roman',serif;font-size:2rem;color:var(--txt);opacity:0;min-height:2.2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-#next-preview .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:1px}
-#next-preview .rn-prefix{font-size:.55em;margin-right:1px}
+#prev-preview,#next-preview{font-family:Georgia,'Times New Roman',serif;font-size:2rem;color:var(--txt);opacity:0;min-height:2.2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
+#prev-preview{margin-top:8px}
+#next-preview{margin-bottom:8px}
+#prev-preview .rn-suffix,#next-preview .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:1px}
+#prev-preview .rn-prefix,#next-preview .rn-prefix{font-size:.55em;margin-right:1px}
 #action-btns{display:flex;gap:14px;justify-content:center;margin-bottom:14px}
 #action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 24px;font-size:.82rem;cursor:pointer;transition:all .2s}
 #action-btns button:hover{border-color:var(--grn-l);color:var(--txt)}
@@ -163,6 +165,7 @@ select:hover{border-color:var(--grn-l)}
     <div id="col-center">
       <section id="question-area">
         <div id="scale-label"></div>
+        <div id="prev-preview"></div>
         <div id="roman-numeral"><span class="rn-numeral" style="color:#ccc">—</span></div>
         <div id="next-preview"></div>
         <div id="action-btns">
@@ -344,6 +347,7 @@ let practiceCount = 0;
 let lastDegree = -1;
 
 let pendingQ = null;          // next question queued after correct answer
+let prevQ = null;             // previous question (just completed)
 let showingAnswer = false;
 
 // ---- Practice mode state ----
@@ -411,6 +415,7 @@ function handleMidiMessage(msg) {
 
   // Advance to queued question when all keys released
   if (pendingQ && currentQ && currentQ.answered && heldMidiNotes.size === 0) {
+    prevQ = currentQ;
     currentQ = pendingQ;
     pendingQ = null;
     showingAnswer = false;
@@ -511,6 +516,7 @@ function buildQuestion() {
 
 function nextQuestion() {
   showingAnswer = false;
+  if (currentQ) prevQ = currentQ;
   if (pendingQ) {
     currentQ = pendingQ;
     pendingQ = null;
@@ -526,20 +532,27 @@ function nextQuestion() {
  * - Exact match → correct (extra notes = no trigger, wrong notes = no penalty)
  * - The user can hold extra notes; releasing them to reach exact match triggers success
  */
+let checkTimer = null;
+
 function checkAnswer() {
   if (!currentQ || currentQ.answered) return;
-  for (const validSet of currentQ.validSets) {
-    if (setsEqual(heldPcs, validSet)) {
-      currentQ.answered = true;
-      practiceCount++;
-      document.getElementById('score').textContent = 'Practiced: ' + practiceCount;
-      document.getElementById('roman-numeral').classList.add('correct');
-      // Queue the next question and show its preview immediately
-      pendingQ = buildQuestion();
-      showPendingPreview();
-      return;
+  // Debounce: wait for nearly-simultaneous key presses to all arrive
+  if (checkTimer) clearTimeout(checkTimer);
+  checkTimer = setTimeout(() => {
+    checkTimer = null;
+    if (!currentQ || currentQ.answered) return;
+    for (const validSet of currentQ.validSets) {
+      if (setsEqual(heldPcs, validSet)) {
+        currentQ.answered = true;
+        practiceCount++;
+        document.getElementById('score').textContent = 'Practiced: ' + practiceCount;
+        document.getElementById('roman-numeral').classList.add('correct');
+        pendingQ = buildQuestion();
+        showPendingPreview();
+        return;
+      }
     }
-  }
+  }, 40);
 }
 
 /** Set equality: same size and every element of a is in b. */
@@ -574,6 +587,16 @@ function showPendingPreview() {
     '<span class="rn-prefix">' + p.prefix + '</span>' +
     '<span class="rn-numeral">' + p.romanCased + '</span>' +
     '<span class="rn-suffix">' + p.quality.suffix + '</span>';
+  el.style.opacity = '0.18';
+}
+
+function showPrevPreview() {
+  const el = document.getElementById('prev-preview');
+  if (!prevQ) { el.style.opacity = '0'; return; }
+  el.innerHTML =
+    '<span class="rn-prefix">' + prevQ.prefix + '</span>' +
+    '<span class="rn-numeral">' + prevQ.romanCased + '</span>' +
+    '<span class="rn-suffix">' + prevQ.quality.suffix + '</span>';
   el.style.opacity = '0.18';
 }
 
@@ -613,6 +636,7 @@ function renderQuestion() {
   document.getElementById('answer-display').innerHTML = '';
   document.getElementById('next-preview').style.opacity = '0';
   document.getElementById('next-preview').innerHTML = '';
+  showPrevPreview();
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
   showingAnswer = false;
