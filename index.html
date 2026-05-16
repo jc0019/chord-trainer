@@ -49,7 +49,7 @@ select:hover{border-color:var(--grn-l)}
 #prev-preview .rn-suffix,#next-preview .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:1px}
 #prev-preview .rn-prefix,#next-preview .rn-prefix{font-size:.55em;margin-right:1px}
 #action-btns{display:flex;gap:14px;justify-content:center;margin-bottom:14px}
-#action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 24px;font-size:.82rem;cursor:pointer;transition:all .2s}
+#action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 0;min-width:110px;font-size:.82rem;cursor:pointer;transition:all .2s;text-align:center}
 #action-btns button:hover{border-color:var(--grn-l);color:var(--txt)}
 #answer-display{font-size:1rem;color:var(--grn);min-height:1.5em;transition:opacity .3s}
 /* ---- Feedback ---- */
@@ -81,23 +81,46 @@ select:hover{border-color:var(--grn-l)}
 /* ---- CoF (left col) ---- */
 #cof-section{display:flex;justify-content:center;padding:0}
 #cof-svg text{font-family:'SF Pro Display',-apple-system,sans-serif;pointer-events:none}
-#cof-svg .cof-key{fill:#a8a29a;font-size:15px;font-weight:400;text-anchor:middle;dominant-baseline:central}
+/* Wedge sectors */
+#cof-svg .cof-wedge{fill:transparent;transition:fill .3s}
+#cof-svg .cof-wedge.active,#cof-svg .cof-wedge.in-scale{fill:rgba(234,210,121,.10)}
+#cof-svg .cof-wedge.masked{fill:rgba(245,242,235,.82)}
+/* Outer ring: note names */
+#cof-svg .cof-key{fill:#a8a29a;font-size:15px;font-weight:400;text-anchor:middle;dominant-baseline:central;transition:all .25s}
 #cof-svg .cof-key.active{fill:var(--grn);font-size:17px;font-weight:700}
-#cof-svg .cof-minor{fill:#c8c2b8;font-size:11.5px;text-anchor:middle;dominant-baseline:central}
+#cof-svg .cof-key.in-scale{fill:var(--txt);font-weight:500}
+#cof-svg .cof-key.masked{fill:var(--txt3);opacity:.5}
+/* Middle ring: relative minor names */
+#cof-svg .cof-minor{fill:#c8c2b8;font-size:11.5px;text-anchor:middle;dominant-baseline:central;transition:all .25s}
 #cof-svg .cof-minor.active{fill:var(--grn-l)}
+#cof-svg .cof-minor.in-scale{fill:var(--txt2)}
+#cof-svg .cof-minor.masked{fill:var(--txt3);opacity:.5}
+/* Roman numeral labels (outer + inner) */
+#cof-svg .cof-rn{fill:var(--txt3);font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central;transition:all .25s}
+#cof-svg .cof-rn.active{fill:var(--grn);font-weight:600}
+#cof-svg .cof-rn.in-scale{fill:var(--txt2);font-weight:500}
+/* Ring lines */
 #cof-svg .cof-ring{fill:none;stroke:var(--border);stroke-width:1}
-#cof-svg .cof-dot{fill:var(--border)}
-#cof-svg .cof-dot.active{fill:var(--grn)}
 /* ---- Scale ref piano (left col) ---- */
 #scale-ref-section{width:100%}
 #scale-ref-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
 .sr-title{font-size:.78rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;font-weight:400}
 #scale-ref{display:flex;justify-content:center;overflow:hidden}
-/* ---- Highlight toggle (shared) ---- */
+/* ---- Reaction time stats ---- */
+#stats-section{width:100%;margin-top:12px}
+#stats-bars{display:flex;justify-content:center;gap:8px;min-height:20px}
+.stat-col{display:flex;flex-direction:column;align-items:center;gap:2px;width:32px}
+.stat-time{font-size:.6rem;color:var(--txt3);height:14px;line-height:14px}
+.stat-bar{width:16px;border-radius:3px 3px 0 0;transition:height .3s,background .3s}
+.stat-deg{font-size:.65rem;color:var(--txt2);font-weight:500}
+/* ---- Toggle switch (shared) ---- */
 #voicing-toggles{display:flex;justify-content:center;gap:6px;margin-bottom:12px}
-.vtog{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:4px 14px;font-size:.75rem;cursor:pointer;transition:all .2s}
-.vtog.on{background:var(--grn);color:#fff;border-color:var(--grn)}
-.vtog:hover:not(.on){border-color:var(--grn-l);color:var(--txt)}
+.tog-row{display:flex;align-items:center;gap:6px;justify-content:center}
+.tog-label{font-size:.7rem;color:var(--txt3);user-select:none}
+.tog{position:relative;width:28px;height:16px;background:var(--border);border-radius:8px;cursor:pointer;transition:background .2s;flex-shrink:0}
+.tog.on{background:var(--grn)}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:#fff;border-radius:50%;transition:left .2s}
+.tog.on::after{left:14px}
 /* ---- Toast notification ---- */
 #toast{position:fixed;top:32px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:100;box-shadow:0 4px 16px rgba(101,138,110,.3)}
 #toast.show{opacity:1}
@@ -155,7 +178,7 @@ select:hover{border-color:var(--grn-l)}
       <section id="scale-ref-section">
         <div id="scale-ref-header">
           <span class="sr-title">Scale</span>
-          <button id="scale-ref-toggle" class="vtog on">Highlight On</button>
+          <div class="tog-row"><span class="tog-label">Highlight</span><div id="scale-ref-toggle" class="tog on"></div></div>
         </div>
         <div id="scale-ref"></div>
       </section>
@@ -180,6 +203,10 @@ select:hover{border-color:var(--grn-l)}
         <div id="score"></div>
       </section>
       <div id="held-notes"></div>
+      <section id="stats-section">
+        <div class="tog-row"><span class="tog-label">Reaction Time</span><div id="stats-toggle" class="tog on"></div></div>
+        <div id="stats-bars"></div>
+      </section>
     </div>
 
     <!-- RIGHT: Voicing Guide -->
@@ -341,22 +368,31 @@ function displayNote(name) {
 }
 
 // ======================== STATE ========================
-let heldMidiNotes = new Set();
-let heldPcs = new Set();
-let currentQ = null;
-let practiceCount = 0;
-let lastDegree = -1;
-
-let pendingQ = null;          // next question queued after correct answer
-let prevQ = null;             // previous question (just completed)
-let showingAnswer = false;
-
-// ---- Practice mode state ----
-let practiceMode = 'random';  // 'random' | 'sequential' | '251' | '251-all'
-let modeIndex = 0;            // position in sequential or progression sequence
 const KEY_CIRCLE_4THS = ['C','F','Bb','Eb','Ab','Db','Gb','B','E','A','D','G'];
-let keyCircleIndex = 0;
 const PROG_251 = [1, 4, 0];
+
+const S = {
+  heldMidiNotes: new Set(),   // raw MIDI note numbers currently held
+  heldPcs:       new Set(),   // pitch classes (mod 12) of held notes
+  currentQ:      null,        // current question object
+  pendingQ:      null,        // next question queued after correct answer
+  prevQ:         null,        // previous question (just completed)
+  practiceCount: 0,
+  lastDegree:    -1,
+  showingAnswer: false,
+  mode:          'random',    // 'random' | 'sequential' | '251' | '251-all'
+  modeIndex:     0,           // position in sequential or progression sequence
+  keyCircleIdx:  0,           // position in KEY_CIRCLE_4THS
+  checkTimer:    null,        // debounce timer for checkAnswer
+  voicingHL:     true,        // voicing guide highlight on/off
+  scaleRefHL:    true,        // scale reference highlight on/off
+  cachedVoicings: [],         // voicing data for current question
+  // Reaction time stats: keyed by "scaleName|chordType"
+  // Each value: { 0: {sum, count}, 1: {sum, count}, ... 6: {sum, count} }
+  stats:         {},
+  qStartTime:    0,           // Date.now() when current question was rendered
+  statsOn:       true,        // reaction time stats toggle
+};
 
 // ======================== MIDI ========================
 async function initMidi() {
@@ -403,34 +439,87 @@ function handleMidiMessage(msg) {
   const [status, note, velocity] = msg.data;
   const cmd = status & 0xf0; // mask off channel bits to get command
   if (cmd === 0x90 && velocity > 0) {
-    heldMidiNotes.add(note);        // Note On
+    S.heldMidiNotes.add(note);
   } else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) {
-    heldMidiNotes.delete(note);     // Note Off (either explicit or velocity=0)
+    S.heldMidiNotes.delete(note);
   } else return;
 
-  // Reduce to pitch class set — only care about WHICH notes, not which octave
-  heldPcs = new Set([...heldMidiNotes].map(n => n % 12));
+  S.heldPcs = new Set([...S.heldMidiNotes].map(n => n % 12));
 
   updateHeldNotesDisplay();
   checkAnswer();
 
   // Advance to queued question when all keys released
-  if (pendingQ && currentQ && currentQ.answered && heldMidiNotes.size === 0) {
-    prevQ = currentQ;
-    currentQ = pendingQ;
-    pendingQ = null;
-    showingAnswer = false;
+  if (S.pendingQ && S.currentQ && S.currentQ.answered && S.heldMidiNotes.size === 0) {
+    S.prevQ = S.currentQ;
+    S.currentQ = S.pendingQ;
+    S.pendingQ = buildQuestion(); // pre-build next so preview is always ready
+    S.showingAnswer = false;
     renderQuestion();
   }
 }
 
 // ======================== QUIZ LOGIC ========================
+
+/** Pick next scale degree based on current practice mode. Mutates S.modeIndex. */
+function pickDegree() {
+  const isCircleMode = S.mode === '251-all';
+  if (S.mode === 'sequential') {
+    const d = S.modeIndex % 7;
+    S.modeIndex++;
+    return d;
+  }
+  if (S.mode === '251' || isCircleMode) {
+    const d = PROG_251[S.modeIndex % 3];
+    S.modeIndex++;
+    return d;
+  }
+  // Random: avoid repeats
+  const candidates = [0,1,2,3,4,5,6].filter(d => d !== S.lastDegree);
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+/**
+ * Build all valid pitch-class sets a player can use to answer.
+ * Generated combinatorially from chord tones + extensions (9th, 13th).
+ *
+ * For each rootless voicing, we accept both with and without bass root,
+ * since a player may or may not double the root in the left hand.
+ */
+function buildValidSets(chordPcs, chordType, scalePcs, degree, intervalsFromRoot) {
+  const sets = [new Set(chordPcs)]; // full chord is always valid
+  if (chordType !== '7th') return sets;
+
+  const rootPc = chordPcs[0], thirdPc = chordPcs[1],
+        fifthPc = chordPcs[2], seventhPc = chordPcs[3];
+  const ninthPc = scalePcs[(degree + 1) % 7];
+
+  // Helper: push a voicing set AND its "with bass root" variant
+  function addWithOptionalRoot(pcs) {
+    sets.push(new Set(pcs));
+    if (!pcs.includes(rootPc)) sets.push(new Set([rootPc, ...pcs]));
+  }
+
+  addWithOptionalRoot([rootPc, thirdPc, seventhPc]);          // Drop 5
+  addWithOptionalRoot([thirdPc, fifthPc, seventhPc, ninthPc]); // Rootless
+  addWithOptionalRoot([thirdPc, seventhPc, ninthPc]);          // Rootless drop 5
+
+  // Dominant: also accept 13th in place of 5th
+  const isDom = intervalsFromRoot[1] === 4 && intervalsFromRoot[3] === 10;
+  if (isDom) {
+    const thirteenthPc = scalePcs[(degree + 5) % 7];
+    addWithOptionalRoot([thirdPc, thirteenthPc, seventhPc, ninthPc]); // 13th rootless
+    addWithOptionalRoot([thirteenthPc, seventhPc, ninthPc]);          // 13th rootless drop 5
+  }
+
+  return sets;
+}
+
 function buildQuestion() {
   // In circle modes, advance key at the start of each new ii-V-I cycle
-  const isCircleMode = practiceMode === '251-all';
-  if (isCircleMode && modeIndex > 0 && modeIndex % 3 === 0) {
-    keyCircleIndex = (keyCircleIndex + 1) % 12;
-    document.getElementById('key-select').value = KEY_CIRCLE_4THS[keyCircleIndex];
+  if (S.mode === '251-all' && S.modeIndex > 0 && S.modeIndex % 3 === 0) {
+    S.keyCircleIdx = (S.keyCircleIdx + 1) % 12;
+    document.getElementById('key-select').value = KEY_CIRCLE_4THS[S.keyCircleIdx];
   }
 
   const rootName = document.getElementById('key-select').value;
@@ -440,32 +529,14 @@ function buildQuestion() {
   const scaleNotes = getScaleNotes(rootName, scaleIv);
   const scalePcs = getScalePcs(rootName, scaleIv);
 
-  // ---- Pick degree based on practice mode ----
-  let degree;
-  if (practiceMode === 'sequential') {
-    degree = modeIndex % 7;
-    modeIndex++;
-  } else if (practiceMode === '251' || isCircleMode) {
-    const posInCycle = modeIndex % 3;
-    degree = PROG_251[posInCycle];
-    modeIndex++;
-  } else {
-    // Random mode: avoid repeats
-    let candidates = [0,1,2,3,4,5,6].filter(d => d !== lastDegree);
-    degree = candidates[Math.floor(Math.random() * candidates.length)];
-  }
-  lastDegree = degree;
+  const degree = pickDegree();
+  S.lastDegree = degree;
 
-  // ---- Build chord by stacking diatonic 3rds ----
-  // Triad: root(+0), 3rd(+2), 5th(+4) — every other scale degree
-  // 7th adds +6 (the 7th degree)
-  const stackIdx = [0, 2, 4];
-  if (chordType === '7th') stackIdx.push(6);
-
+  // Build chord by stacking diatonic 3rds
+  const stackIdx = chordType === '7th' ? [0, 2, 4, 6] : [0, 2, 4];
   const chordNotes = stackIdx.map(i => scaleNotes[(degree + i) % 7]);
   const chordPcs = stackIdx.map(i => scalePcs[(degree + i) % 7]);
 
-  // Intervals from chord root
   const rootPc = chordPcs[0];
   const intervalsFromRoot = chordPcs.map(pc => ((pc - rootPc) % 12 + 12) % 12);
 
@@ -473,38 +544,7 @@ function buildQuestion() {
   const prefix = getDegreePrefix(scaleIv, degree);
   const romanBase = ROMAN[degree];
   const romanCased = quality.romanCase === 'upper' ? romanBase : romanBase.toLowerCase();
-
-  // ---- Build valid pitch class sets for answer matching ----
-  // Accept multiple voicing styles:
-  //   Triads: all 3 notes (exact match).
-  //   7th chords — any of:
-  //     Full:     {R, 3, 5, 7}
-  //     Drop 5:   {R, 3, 7}
-  //     Rootless: {3, 5, 7, 9}   or  {3, 13, 7, 9} (dom)
-  //     Rootless drop 5: {3, 7, 9}  or  {13, 7, 9} (dom)
-  const fullSet = new Set(chordPcs);
-  const validSets = [fullSet];
-  if (chordType === '7th') {
-    const without5 = new Set(chordPcs.filter((_, i) => i !== 2));
-    validSets.push(without5);
-
-    // Rootless voicing sets (9th replaces root)
-    const ninthPc = scalePcs[(degree + 1) % 7]; // 9th = one scale degree above root
-    const thirdPc = chordPcs[1], fifthPc = chordPcs[2], seventhPc = chordPcs[3];
-
-    // Standard rootless: {3, 5, 7, 9}
-    validSets.push(new Set([thirdPc, fifthPc, seventhPc, ninthPc]));
-    // Rootless without 5: {3, 7, 9}
-    validSets.push(new Set([thirdPc, seventhPc, ninthPc]));
-
-    // Dominant chords: also accept diatonic 13th (parent-scale degree +5) in place of 5th
-    const isDom = intervalsFromRoot[1] === 4 && intervalsFromRoot[3] === 10;
-    if (isDom) {
-      const thirteenthPc = scalePcs[(degree + 5) % 7];
-      validSets.push(new Set([thirdPc, thirteenthPc, seventhPc, ninthPc])); // {3, 13, 7, 9}
-      validSets.push(new Set([thirteenthPc, seventhPc, ninthPc]));          // {13, 7, 9}
-    }
-  }
+  const validSets = buildValidSets(chordPcs, chordType, scalePcs, degree, intervalsFromRoot);
 
   return {
     rootName, scaleName, chordType, degree,
@@ -516,14 +556,15 @@ function buildQuestion() {
 }
 
 function nextQuestion() {
-  showingAnswer = false;
-  if (currentQ) prevQ = currentQ;
-  if (pendingQ) {
-    currentQ = pendingQ;
-    pendingQ = null;
+  S.showingAnswer = false;
+  if (S.currentQ) S.prevQ = S.currentQ;
+  if (S.pendingQ) {
+    S.currentQ = S.pendingQ;
   } else {
-    currentQ = buildQuestion();
+    S.currentQ = buildQuestion();
   }
+  // Always pre-build the next question so preview is visible immediately
+  S.pendingQ = buildQuestion();
   renderQuestion();
 }
 
@@ -533,23 +574,25 @@ function nextQuestion() {
  * - Exact match → correct (extra notes = no trigger, wrong notes = no penalty)
  * - The user can hold extra notes; releasing them to reach exact match triggers success
  */
-let checkTimer = null;
-
 function checkAnswer() {
-  if (!currentQ || currentQ.answered) return;
+  if (!S.currentQ || S.currentQ.answered) return;
   // Debounce: wait for nearly-simultaneous key presses to all arrive
-  if (checkTimer) clearTimeout(checkTimer);
-  checkTimer = setTimeout(() => {
-    checkTimer = null;
-    if (!currentQ || currentQ.answered) return;
-    for (const validSet of currentQ.validSets) {
-      if (setsEqual(heldPcs, validSet)) {
-        currentQ.answered = true;
-        practiceCount++;
-        document.getElementById('score').textContent = 'Practiced: ' + practiceCount;
+  if (S.checkTimer) clearTimeout(S.checkTimer);
+  S.checkTimer = setTimeout(() => {
+    S.checkTimer = null;
+    if (!S.currentQ || S.currentQ.answered) return;
+    for (const validSet of S.currentQ.validSets) {
+      if (setsEqual(S.heldPcs, validSet)) {
+        S.currentQ.answered = true;
+        S.practiceCount++;
+        document.getElementById('score').textContent = 'Practiced: ' + S.practiceCount;
         document.getElementById('roman-numeral').classList.add('correct');
-        pendingQ = buildQuestion();
-        showPendingPreview();
+        // Record reaction time (random mode only, skip if answer was revealed)
+        if (S.mode === 'random' && !S.showingAnswer && S.qStartTime > 0) {
+          const elapsed = Date.now() - S.qStartTime;
+          if (elapsed <= 10000) recordStat(S.currentQ, elapsed);
+        }
+        // pendingQ is already pre-built; no need to rebuild or update preview
         return;
       }
     }
@@ -564,9 +607,9 @@ function setsEqual(a, b) {
 }
 
 function showAnswer() {
-  if (!currentQ) return;
-  showingAnswer = true;
-  const q = currentQ;
+  if (!S.currentQ) return;
+  S.showingAnswer = true;
+  const q = S.currentQ;
   const chordName = displayNote(q.chordNotes[0]) + q.quality.chordSymbol;
   const noteNames = q.chordNotes.map(displayNote).join('  ');
   document.getElementById('answer-display').innerHTML =
@@ -582,38 +625,39 @@ function showAnswer() {
  */
 function showPendingPreview() {
   const el = document.getElementById('next-preview');
-  if (!pendingQ) { el.style.opacity = '0'; return; }
-  const p = pendingQ;
-  el.innerHTML =
-    '<span class="rn-prefix">' + p.prefix + '</span>' +
-    '<span class="rn-numeral">' + p.romanCased + '</span>' +
-    '<span class="rn-suffix">' + p.quality.suffix + '</span>';
+  if (!S.pendingQ) { el.style.opacity = '0'; return; }
+  const p = S.pendingQ;
+  el.innerHTML = romanHTML(p);
   el.style.opacity = '0.18';
 }
 
 function showPrevPreview() {
   const el = document.getElementById('prev-preview');
-  if (!prevQ) { el.style.opacity = '0'; return; }
-  el.innerHTML =
-    '<span class="rn-prefix">' + prevQ.prefix + '</span>' +
-    '<span class="rn-numeral">' + prevQ.romanCased + '</span>' +
-    '<span class="rn-suffix">' + prevQ.quality.suffix + '</span>';
+  if (!S.prevQ) { el.style.opacity = '0'; return; }
+  el.innerHTML = romanHTML(S.prevQ);
   el.style.opacity = '0.18';
 }
 
 function goToPrev() {
-  if (!prevQ) return;
-  // Current becomes next (queue it), prev becomes current
-  pendingQ = currentQ;
-  currentQ = prevQ;
-  prevQ = null;
-  currentQ.answered = false;
-  showingAnswer = false;
+  if (!S.prevQ) return;
+  S.pendingQ = S.currentQ;
+  S.currentQ = S.prevQ;
+  S.prevQ = null;
+  S.currentQ.answered = false;
+  S.showingAnswer = false;
   renderQuestion();
   showPendingPreview();
 }
 
 // ======================== UI ========================
+
+/** Build Roman numeral HTML from a question object (or any {prefix, romanCased, quality}). */
+function romanHTML(q) {
+  return '<span class="rn-prefix">' + q.prefix + '</span>' +
+    '<span class="rn-numeral">' + q.romanCased + '</span>' +
+    '<span class="rn-suffix">' + q.quality.suffix + '</span>';
+}
+
 function getChordType() {
   return document.querySelector('.type-btn.active').dataset.type;
 }
@@ -634,50 +678,40 @@ function populateSelectors() {
 }
 
 function renderQuestion() {
-  const q = currentQ;
+  const q = S.currentQ;
+  S.qStartTime = Date.now();
   document.getElementById('scale-label').textContent =
     displayNote(q.rootName) + ' ' + q.scaleName;
 
   const rnEl = document.getElementById('roman-numeral');
   rnEl.classList.remove('correct');
-  rnEl.innerHTML =
-    '<span class="rn-prefix">' + q.prefix + '</span>' +
-    '<span class="rn-numeral">' + q.romanCased + '</span>' +
-    '<span class="rn-suffix">' + q.quality.suffix + '</span>';
+  rnEl.innerHTML = romanHTML(q);
 
   document.getElementById('answer-display').style.opacity = '0';
   document.getElementById('answer-display').innerHTML = '';
-  document.getElementById('next-preview').style.opacity = '0';
-  document.getElementById('next-preview').innerHTML = '';
   showPrevPreview();
+  showPendingPreview();
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
-  showingAnswer = false;
+  S.showingAnswer = false;
 
   renderVoicingGuide();
   updateCircleOfFifths();
   updateScaleRef();
+  renderStats();
 }
 
 function updateHeldNotesDisplay() {
-  // Build pc→name map from current scale context for correct enharmonic spelling
   const pcName = {};
-  if (currentQ) {
-    currentQ.scalePcs.forEach((pc, i) => { pcName[pc] = displayNote(currentQ.scaleNotes[i]); });
+  if (S.currentQ) {
+    S.currentQ.scalePcs.forEach((pc, i) => { pcName[pc] = displayNote(S.currentQ.scaleNotes[i]); });
   }
-  // Fallback: prefer flats if root uses flats, else sharps
-  const useFl = currentQ && currentQ.rootName.length > 1 && currentQ.rootName[1] === 'b';
+  const useFl = S.currentQ && S.currentQ.rootName.length > 1 && S.currentQ.rootName[1] === 'b';
   const sharps = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
   const flats  = ['C','D\u266d','D','E\u266d','E','F','G\u266d','G','A\u266d','A','B\u266d','B'];
   const fallback = useFl ? flats : sharps;
-  const notes = [...heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
-  // Prepend chord name (e.g. "Bbmaj7") before held note names
-  const chordLabel = currentQ
-    ? displayNote(currentQ.chordNotes[0]) + currentQ.quality.chordSymbol
-    : '';
-  const el = document.getElementById('held-notes');
-  if (heldPcs.size === 0) { el.textContent = ''; return; }
-  el.textContent = chordLabel ? chordLabel + '    ' + notes.join('  ') : notes.join('  ');
+  const notes = [...S.heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
+  document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
 }
 
 // ======================== VOICING GUIDE ========================
@@ -829,9 +863,7 @@ function getAllVoicings(q) {
   return voicings;
 }
 
-// ---- Voicing guide state ----
-let voicingHighlight = true; // whether piano keys are highlighted
-let cachedVoicings = []; // current question's voicings
+// Voicing guide uses S.voicingHL and S.S.cachedVoicings
 
 // ---- Build one voicing column (label + mini piano) ----
 function buildVoicingCol(label, rawNotes, funcLabels, altIdx) {
@@ -848,7 +880,7 @@ function buildVoicingCol(label, rawNotes, funcLabels, altIdx) {
   const midi = notesToMidi(rawNotes);
   const disp = rawNotes.map(displayNote);
   const altMidi = (altIdx || []).map(i => midi[i]);
-  renderMiniPiano(piano, midi, disp, funcLabels, voicingHighlight, altMidi);
+  renderMiniPiano(piano, midi, disp, funcLabels, S.voicingHL, altMidi);
   col.appendChild(piano);
 
   return col;
@@ -859,21 +891,26 @@ function renderVoicingGuide() {
   const pianoEl = document.getElementById('voicing-pianos');
   togEl.innerHTML = '';
   pianoEl.innerHTML = '';
-  if (!currentQ) return;
+  if (!S.currentQ) return;
 
-  cachedVoicings = getAllVoicings(currentQ);
+  S.cachedVoicings = getAllVoicings(S.currentQ);
 
-  // Single highlight toggle button
-  const btn = document.createElement('button');
-  btn.className = 'vtog' + (voicingHighlight ? ' on' : '');
-  btn.textContent = voicingHighlight ? 'Highlight On' : 'Highlight Off';
-  btn.addEventListener('click', () => {
-    voicingHighlight = !voicingHighlight;
-    btn.className = 'vtog' + (voicingHighlight ? ' on' : '');
-    btn.textContent = voicingHighlight ? 'Highlight On' : 'Highlight Off';
+  // Highlight toggle (compact switch)
+  const row = document.createElement('div');
+  row.className = 'tog-row';
+  const label = document.createElement('span');
+  label.className = 'tog-label';
+  label.textContent = 'Highlight';
+  const tog = document.createElement('div');
+  tog.className = 'tog' + (S.voicingHL ? ' on' : '');
+  tog.addEventListener('click', () => {
+    S.voicingHL = !S.voicingHL;
+    tog.classList.toggle('on', S.voicingHL);
     renderVoicingPianos();
   });
-  togEl.appendChild(btn);
+  row.appendChild(label);
+  row.appendChild(tog);
+  togEl.appendChild(row);
 
   // Show all voicings
   renderVoicingPianos();
@@ -882,7 +919,7 @@ function renderVoicingGuide() {
 function renderVoicingPianos() {
   const pianoEl = document.getElementById('voicing-pianos');
   pianoEl.innerHTML = '';
-  cachedVoicings.forEach(v => {
+  S.cachedVoicings.forEach(v => {
     pianoEl.appendChild(buildVoicingCol(v.label, v.raw, v.funcs, v.altIdx));
   });
 }
@@ -891,111 +928,153 @@ function renderVoicingPianos() {
 
 // ======================== CIRCLE OF FIFTHS ========================
 const COF_MAJOR = ['C','G','D','A','E','B','Gb','Db','Ab','Eb','Bb','F'];
-const COF_MINOR = ['Am','Em','Bm','F\u266fm','C\u266fm','G\u266fm','E\u266dm','B\u266dm','Fm','Cm','Gm','Dm'];
+const COF_MINOR = ['Am','Em','Bm','F♯m','C♯m','G♯m','E♭m','B♭m','Fm','Cm','Gm','Dm'];
+const COF_CX = 180, COF_CY = 180;
+// Radii: rings, wedge extent, and text placement for each layer
+const COF_R = {
+  wedge: 158,      // wedge sector outer edge
+  rOuter: 148,     // outer ring line
+  rMid: 100,       // middle ring line (same ~48px band as outer)
+  rInner: 52,      // inner ring line (same ~48px band as middle)
+  rnOuter: 162,    // outer Roman numeral (outside outer ring)
+  key: 126,        // note name (between outer and mid ring)
+  minor: 76,       // relative minor name (between mid and inner ring)
+};
+
+/** SVG arc sector path from center, spanning startAngle→endAngle at given radius. */
+function wedgePath(r, a1, a2) {
+  const x1 = COF_CX + r * Math.cos(a1), y1 = COF_CY + r * Math.sin(a1);
+  const x2 = COF_CX + r * Math.cos(a2), y2 = COF_CY + r * Math.sin(a2);
+  return 'M ' + COF_CX + ' ' + COF_CY + ' L ' + x1 + ' ' + y1 +
+    ' A ' + r + ' ' + r + ' 0 0 1 ' + x2 + ' ' + y2 + ' Z';
+}
+
+function cofText(ns, svg, r, angle, cls, cofIdx) {
+  const t = document.createElementNS(ns, 'text');
+  t.setAttribute('x', COF_CX + r * Math.cos(angle));
+  t.setAttribute('y', COF_CY + r * Math.sin(angle));
+  t.setAttribute('class', cls);
+  t.setAttribute('data-cof', cofIdx);
+  svg.appendChild(t);
+  return t;
+}
 
 function buildCircleOfFifths() {
   const svg = document.getElementById('cof-svg');
-  const cx = 180, cy = 180, rOuter = 152, rInner = 110, rDot = 163;
   const ns = 'http://www.w3.org/2000/svg';
+  const R = COF_R;
 
-  // Outer ring
-  const ring1 = document.createElementNS(ns, 'circle');
-  ring1.setAttribute('cx', cx); ring1.setAttribute('cy', cy);
-  ring1.setAttribute('r', rOuter); ring1.setAttribute('class', 'cof-ring');
-  svg.appendChild(ring1);
-
-  // Inner ring
-  const ring2 = document.createElementNS(ns, 'circle');
-  ring2.setAttribute('cx', cx); ring2.setAttribute('cy', cy);
-  ring2.setAttribute('r', rInner); ring2.setAttribute('class', 'cof-ring');
-  svg.appendChild(ring2);
+  // Ring lines
+  [R.rOuter, R.rMid, R.rInner].forEach(r => {
+    const ring = document.createElementNS(ns, 'circle');
+    ring.setAttribute('cx', COF_CX); ring.setAttribute('cy', COF_CY);
+    ring.setAttribute('r', r); ring.setAttribute('class', 'cof-ring');
+    svg.appendChild(ring);
+  });
 
   for (let i = 0; i < 12; i++) {
-    const angle = (i * 30 - 90) * Math.PI / 180; // start at 12 o'clock
+    const angle = (i * 30 - 90) * Math.PI / 180;
+    const a1 = ((i - 0.5) * 30 - 90) * Math.PI / 180;
+    const a2 = ((i + 0.5) * 30 - 90) * Math.PI / 180;
 
-    // Dot on outer ring
-    const dot = document.createElementNS(ns, 'circle');
-    dot.setAttribute('cx', cx + rDot * Math.cos(angle));
-    dot.setAttribute('cy', cy + rDot * Math.sin(angle));
-    dot.setAttribute('r', 2.5);
-    dot.setAttribute('class', 'cof-dot');
-    dot.setAttribute('data-cof', i);
-    svg.appendChild(dot);
+    // Background wedge sector
+    const wedge = document.createElementNS(ns, 'path');
+    wedge.setAttribute('d', wedgePath(R.wedge, a1, a2));
+    wedge.setAttribute('class', 'cof-wedge');
+    wedge.setAttribute('data-cof', i);
+    svg.appendChild(wedge);
 
-    // Major key label (outer)
-    const major = document.createElementNS(ns, 'text');
-    const mR = rOuter + 2; // just outside ring, but inside viewBox
-    // Push labels slightly outward at top/bottom for readability
-    const labelR = 133;
-    major.setAttribute('x', cx + labelR * Math.cos(angle));
-    major.setAttribute('y', cy + labelR * Math.sin(angle));
-    major.setAttribute('class', 'cof-key');
-    major.setAttribute('data-cof', i);
-    major.textContent = displayNote(COF_MAJOR[i]);
-    svg.appendChild(major);
+    // Outer Roman numeral (dynamic, outside outer ring)
+    cofText(ns, svg, R.rnOuter, angle, 'cof-rn cof-rn-out', i);
 
-    // Minor key label (inner)
-    const minor = document.createElementNS(ns, 'text');
-    const minorR = 88;
-    minor.setAttribute('x', cx + minorR * Math.cos(angle));
-    minor.setAttribute('y', cy + minorR * Math.sin(angle));
-    minor.setAttribute('class', 'cof-minor');
-    minor.setAttribute('data-cof', i);
-    minor.textContent = COF_MINOR[i];
-    svg.appendChild(minor);
+    // Note name (static)
+    cofText(ns, svg, R.key, angle, 'cof-key', i).textContent = displayNote(COF_MAJOR[i]);
+
+    // Relative minor name (static)
+    cofText(ns, svg, R.minor, angle, 'cof-minor', i).textContent = COF_MINOR[i];
   }
 }
 
 function updateCircleOfFifths() {
   const curKey = document.getElementById('key-select').value;
-  // Map current key to COF index
-  // Need to handle enharmonic: F# → index 5 (same as Gb)
   const keyPc = noteToPc(curKey);
   const cofPcs = COF_MAJOR.map(noteToPc);
   const activeIdx = cofPcs.indexOf(keyPc);
+  const q = S.currentQ;
 
-  document.querySelectorAll('#cof-svg .cof-key').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
+  // Map pitch class → Roman numeral for each scale degree
+  const pcRoman = {};
+  if (q) {
+    for (let deg = 0; deg < 7; deg++) {
+      const pc = q.scalePcs[deg];
+      const stackIdx = q.chordType === '7th' ? [0, 2, 4, 6] : [0, 2, 4];
+      const chordPcs = stackIdx.map(i => q.scalePcs[(deg + i) % 7]);
+      const rootPc = chordPcs[0];
+      const ivs = chordPcs.map(p => ((p - rootPc) % 12 + 12) % 12);
+      const quality = getChordQuality(ivs, q.chordType);
+      const base = ROMAN[deg];
+      const cased = quality.romanCase === 'upper' ? base : base.toLowerCase();
+      pcRoman[pc] = cased + quality.suffix;
+    }
+  }
+
+  const scalePcSet = q ? new Set(q.scalePcs) : new Set();
+  const CLS3 = ['active', 'in-scale', 'masked'];
+
+  // Classify a CoF position by whether its major-key PC is in the current scale
+  const classify = (cofIdx) => {
+    if (cofIdx === activeIdx) return 'active';
+    if (scalePcSet.has(cofPcs[cofIdx])) return 'in-scale';
+    return 'masked';
+  };
+
+  // Apply wedge / note-name / minor-name classes
+  ['cof-wedge', 'cof-key', 'cof-minor'].forEach(sel => {
+    document.querySelectorAll('#cof-svg .' + sel).forEach(el => {
+      const cls = classify(parseInt(el.dataset.cof));
+      el.classList.remove(...CLS3);
+      el.classList.add(cls);
+    });
   });
-  document.querySelectorAll('#cof-svg .cof-minor').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
+
+  // Outer Roman numeral: degree of the major key at this CoF position
+  document.querySelectorAll('#cof-svg .cof-rn-out').forEach(el => {
+    const idx = parseInt(el.dataset.cof);
+    const cls = classify(idx);
+    el.classList.remove(...CLS3);
+    el.classList.add(cls);
+    const majorPc = cofPcs[idx];
+    el.textContent = (cls !== 'masked' && pcRoman[majorPc]) ? pcRoman[majorPc] : '';
   });
-  document.querySelectorAll('#cof-svg .cof-dot').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.cof) === activeIdx);
-  });
+
 }
 
 // ======================== SCALE REFERENCE (Mini Piano) ========================
-let scaleRefHighlight = true;
+// Scale ref uses S.scaleRefHL
 
 function initScaleRefToggle() {
-  const btn = document.getElementById('scale-ref-toggle');
-  btn.addEventListener('click', () => {
-    scaleRefHighlight = !scaleRefHighlight;
-    btn.className = 'vtog' + (scaleRefHighlight ? ' on' : '');
-    btn.textContent = scaleRefHighlight ? 'Highlight On' : 'Highlight Off';
+  const tog = document.getElementById('scale-ref-toggle');
+  tog.addEventListener('click', () => {
+    S.scaleRefHL = !S.scaleRefHL;
+    tog.classList.toggle('on', S.scaleRefHL);
     updateScaleRef();
   });
 }
 
 /**
  * Render scale reference as a mini piano showing all 7 scale degrees.
- * Always visible; highlight toggle controls whether keys are colored.
+ * Reuses renderMiniPiano — just builds the highlight data in its format.
  */
 function updateScaleRef() {
-  if (!currentQ) return;
-  const q = currentQ;
+  if (!S.currentQ) return;
+  const q = S.currentQ;
   const container = document.getElementById('scale-ref');
   container.innerHTML = '';
 
   const piano = document.createElement('div');
   piano.className = 'mini-piano';
 
-  const totalW = MP.octs * 7 * MP.step;
-  piano.style.width = totalW + 'px';
-  piano.style.height = MP.wh + 'px';
-
-  // Build MIDI notes for scale degrees
+  // Build MIDI notes for scale degrees (+ octave repeat)
   const scaleMidi = [];
   let cur = MP.start;
   for (let d = 0; d < 7; d++) {
@@ -1006,67 +1085,89 @@ function updateScaleRef() {
   const octaveMidi = scaleMidi[0] + 12;
   if (octaveMidi < MP.start + MP.octs * 12) scaleMidi.push(octaveMidi);
 
-  const hlSet = new Set(scaleMidi);
-  const showHL = scaleRefHighlight;
+  const dispNames = scaleMidi.map((_, i) => displayNote(q.scaleNotes[i % 7]));
+  const funcLabels = scaleMidi.map((_, i) => String((i % 7) + 1));
 
-  // Draw white keys
-  for (let oct = 0; oct < MP.octs; oct++) {
-    MP_W_PCS.forEach((pc, i) => {
-      const m = MP.start + oct * 12 + pc;
-      const x = (oct * 7 + i) * MP.step;
-      const hl = showHL && hlSet.has(m);
-      const k = document.createElement('div');
-      k.className = 'mp-key w' + (hl ? ' hl' : '');
-      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.ww + 'px;height:' + MP.wh + 'px';
-      piano.appendChild(k);
-      if (hl) {
-        const idx = scaleMidi.indexOf(m);
-        const degNum = (idx % 7) + 1;
-        const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
-        addScaleRefLabels(piano, x, MP.ww, noteName, degNum, 'w');
-      }
-    });
-  }
-  // Draw black keys
-  for (let oct = 0; oct < MP.octs; oct++) {
-    MP_B_PCS.forEach((pc, i) => {
-      const m = MP.start + oct * 12 + pc;
-      const x = (oct * 7 + MP_B_AFTER[i]) * MP.step + MP.step - MP.bw / 2;
-      const hl = showHL && hlSet.has(m);
-      const k = document.createElement('div');
-      k.className = 'mp-key b' + (hl ? ' hl' : '');
-      k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.bw + 'px;height:' + MP.bh + 'px';
-      piano.appendChild(k);
-      if (hl) {
-        const idx = scaleMidi.indexOf(m);
-        const degNum = (idx % 7) + 1;
-        const noteName = idx < 7 ? displayNote(q.scaleNotes[idx]) : displayNote(q.scaleNotes[0]);
-        addScaleRefLabels(piano, x, MP.bw, noteName, degNum, 'b');
-      }
-    });
-  }
+  renderMiniPiano(piano, scaleMidi, dispNames, funcLabels, S.scaleRefHL);
   container.appendChild(piano);
 }
 
-function addScaleRefLabels(container, x, w, noteName, degNum, keyType) {
-  const kCls = ' ' + keyType; // ' w' or ' b'
-  const keyBottom = (keyType === 'w') ? MP.wh : MP.bh;
-  const nnTop = keyBottom - 24;
-  const fnTop = keyBottom - 12;
-  const nn = document.createElement('div');
-  nn.className = 'mp-lbl nn' + kCls;
-  nn.style.cssText = 'left:' + x + 'px;top:' + nnTop + 'px;width:' + w + 'px';
-  nn.textContent = noteName;
-  container.appendChild(nn);
-  const fn = document.createElement('div');
-  fn.className = 'mp-lbl fn' + kCls;
-  fn.style.cssText = 'left:' + x + 'px;top:' + fnTop + 'px;width:' + w + 'px';
-  fn.textContent = degNum;
-  container.appendChild(fn);
+// ======================== REACTION TIME STATS ========================
+
+/** Record a reaction time for a given question's scale+chordType+degree. */
+function recordStat(q, ms) {
+  const key = q.scaleName + '|' + q.chordType;
+  if (!S.stats[key]) {
+    S.stats[key] = {};
+    for (let d = 0; d < 7; d++) S.stats[key][d] = { sum: 0, count: 0 };
+  }
+  const d = S.stats[key][q.degree];
+  d.sum += ms;
+  d.count++;
+  renderStats();
+}
+
+function initStatsToggle() {
+  const tog = document.getElementById('stats-toggle');
+  tog.addEventListener('click', () => {
+    S.statsOn = !S.statsOn;
+    tog.classList.toggle('on', S.statsOn);
+    renderStats();
+  });
+}
+
+/** Render reaction time bars below the Scale Reference piano. */
+function renderStats() {
+  const container = document.getElementById('stats-bars');
+  if (!container) return;
+  if (!S.statsOn || !S.currentQ) { container.innerHTML = ''; return; }
+
+  const key = S.currentQ.scaleName + '|' + S.currentQ.chordType;
+  const data = S.stats[key];
+  if (!data) { container.innerHTML = ''; return; }
+
+  // Compute averages
+  const avgs = [];
+  let maxAvg = 0;
+  for (let d = 0; d < 7; d++) {
+    const avg = data[d].count > 0 ? data[d].sum / data[d].count : 0;
+    avgs.push(avg);
+    if (avg > maxAvg) maxAvg = avg;
+  }
+
+  // If no data yet, hide
+  if (maxAvg === 0) { container.innerHTML = ''; return; }
+
+  const q = S.currentQ;
+  const barMax = 48; // max bar height in px
+
+  // Color: green (<1.5s) → yellow (1.5-3s) → warm red (>3s)
+  function barColor(ms) {
+    if (ms <= 1500) return 'var(--grn)';
+    if (ms <= 3000) return 'var(--hl)';
+    return '#c27a5a';
+  }
+
+  let html = '';
+  for (let d = 0; d < 7; d++) {
+    const avg = avgs[d];
+    const h = avg > 0 ? Math.max(4, Math.round((avg / maxAvg) * barMax)) : 0;
+    const label = avg > 0 ? (avg / 1000).toFixed(1) + 's' : '';
+    const degLabel = ROMAN[d];
+    const color = avg > 0 ? barColor(avg) : 'transparent';
+    html += '<div class="stat-col">' +
+      '<div class="stat-time">' + label + '</div>' +
+      '<div class="stat-bar" style="height:' + h + 'px;background:' + color + '"></div>' +
+      '<div class="stat-deg">' + degLabel + '</div>' +
+      '</div>';
+  }
+  container.innerHTML = html;
 }
 
 // ======================== MODE HELPERS ========================
 function setMode(mode) {
+  S.pendingQ = null;  // discard stale pre-built question
+  S.stats = {};       // reset reaction time stats on mode change
   // ii-V-I modes only apply to Major — auto-switch scale if needed
   if (mode === '251' || mode === '251-all') {
     const scaleSel = document.getElementById('scale-select');
@@ -1075,13 +1176,12 @@ function setMode(mode) {
       showScaleNotice();
     }
   }
-  practiceMode = mode;
-  modeIndex = 0;
-  // For circle modes, sync keyCircleIndex to current key selector
+  S.mode = mode;
+  S.modeIndex = 0;
   if (mode === '251-all') {
     const curKey = document.getElementById('key-select').value;
     const idx = KEY_CIRCLE_4THS.indexOf(curKey);
-    keyCircleIndex = idx >= 0 ? idx : 0;
+    S.keyCircleIdx = idx >= 0 ? idx : 0;
   }
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.mode-btn[data-mode="' + mode + '"]').classList.add('active');
@@ -1108,7 +1208,9 @@ function setupEvents() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      modeIndex = 0;  // reset progression on chord type change
+      S.modeIndex = 0;
+      S.pendingQ = null;
+      S.stats = {};
       nextQuestion();
     });
   });
@@ -1120,16 +1222,16 @@ function setupEvents() {
 
   // Key / scale change
   document.getElementById('key-select').addEventListener('change', () => {
-    modeIndex = 0;
-    // Sync circle index when key is manually changed during 251-all mode
-    if (practiceMode === '251-all') {
+    S.modeIndex = 0;
+    S.pendingQ = null; // discard stale pre-built question from old key
+    if (S.mode === '251-all') {
       const curKey = document.getElementById('key-select').value;
       const idx = KEY_CIRCLE_4THS.indexOf(curKey);
-      keyCircleIndex = idx >= 0 ? idx : 0;
+      S.keyCircleIdx = idx >= 0 ? idx : 0;
     }
     nextQuestion();
   });
-  document.getElementById('scale-select').addEventListener('change', () => { modeIndex = 0; nextQuestion(); });
+  document.getElementById('scale-select').addEventListener('change', () => { S.modeIndex = 0; S.pendingQ = null; S.stats = {}; nextQuestion(); });
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -1143,10 +1245,11 @@ function init() {
   populateSelectors();
   buildCircleOfFifths();
   initScaleRefToggle();
+  initStatsToggle();
   setupEvents();
   initMidi();
   nextQuestion();
-  practiceCount = 0;
+  S.practiceCount = 0;
   document.getElementById('score').textContent = 'Practiced: 0';
 }
 
