@@ -43,11 +43,8 @@
   </div>
 
   <div id="main-columns">
-    <!-- LEFT: Circle of Fifths + Scale Ref -->
+    <!-- LEFT: Scale Ref (top) + Chord Pianos | CoF (bottom row) -->
     <div id="col-left">
-      <section id="cof-section">
-        <svg id="cof-svg" width="360" height="360" viewBox="0 0 360 360"></svg>
-      </section>
       <section id="scale-ref-section">
         <div id="scale-ref-header">
           <span class="sr-title">Scale</span>
@@ -55,17 +52,23 @@
         </div>
         <div id="scale-ref"></div>
       </section>
+      <div id="left-bottom">
+        <section id="chord-ref-section">
+          <div id="chord-ref"></div>
+        </section>
+        <section id="cof-section">
+          <svg id="cof-svg" width="360" height="360" viewBox="0 0 360 360"></svg>
+        </section>
+      </div>
     </div>
 
     <!-- CENTER: Question + Feedback -->
     <div id="col-center">
       <section id="question-area">
         <div id="scale-label"></div>
-        <div id="prev-preview"></div>
         <div id="roman-numeral"><span class="rn-numeral" style="color:#ccc">—</span></div>
         <div id="next-preview"></div>
         <div id="action-btns">
-          <button id="prev-btn" onclick="goToPrev()">Prev</button>
           <button id="show-btn" onclick="showAnswer()">Show Answer</button>
           <button id="next-btn" onclick="nextQuestion()">Next (Space)</button>
         </div>
@@ -76,10 +79,6 @@
         <div id="score"></div>
       </section>
       <div id="held-notes"></div>
-      <section id="stats-section">
-        <div class="tog-row"><span class="tog-label">Reaction Time</span><div id="stats-toggle" class="tog on"></div></div>
-        <div id="stats-bars"></div>
-      </section>
     </div>
 
     <!-- RIGHT: Voicing Guide -->

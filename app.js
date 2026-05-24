@@ -100,7 +100,7 @@ function getDegreePrefix(scaleIntervals, degree) {
  * @returns {Object} { romanCase, suffix, chordSymbol }
  *   romanCase: 'upper' for major/dominant/augmented, 'lower' for minor/diminished
  *   suffix:    appended to Roman numeral (e.g. "maj7", "°", "ø7")
- *   chordSymbol: appended to root note name for display (e.g. "m7", "dim", "aug(maj7)")
+ *   chordSymbol: appended to root note name for display (e.g. "m7", "dim", "aug(Maj7)")
  */
 function getChordQuality(intervals, chordType) {
   const third = intervals[1]; // 3 = minor 3rd, 4 = major 3rd
@@ -124,13 +124,13 @@ function getChordQuality(intervals, chordType) {
   // 9 = diminished 7th, 10 = minor 7th, 11 = major 7th
   const seventh = intervals[3];
   let suf7, sym7;
-  if (triadType === 'major' && seventh === 11)       { suf7 = 'maj7'; sym7 = 'maj7'; }       // Imaj7, IVmaj7
+  if (triadType === 'major' && seventh === 11)       { suf7 = 'maj7'; sym7 = 'Maj7'; }       // Imaj7, IVmaj7
   else if (triadType === 'major' && seventh === 10)   { suf7 = '7';    sym7 = '7'; }           // V7 (dominant)
   else if (triadType === 'minor' && seventh === 10)   { suf7 = '7';    sym7 = 'm7'; }          // ii7, iii7, vi7
-  else if (triadType === 'minor' && seventh === 11)   { suf7 = 'maj7'; sym7 = 'm(maj7)'; }     // i(maj7) in harm/mel minor
+  else if (triadType === 'minor' && seventh === 11)   { suf7 = 'maj7'; sym7 = 'm(Maj7)'; }     // i(maj7) in harm/mel minor
   else if (triadType === 'diminished' && seventh===10){ suf7 = '\u00f87'; sym7 = '\u00f87'; }   // viiø7 (half-diminished)
   else if (triadType === 'diminished' && seventh===9) { suf7 = '\u00b07'; sym7 = '\u00b07'; }   // vii°7 (fully diminished, harm minor)
-  else if (triadType === 'augmented' && seventh===11) { suf7 = '\u207amaj7'; sym7 = 'aug(maj7)'; } // ♭III⁺maj7 in mel minor
+  else if (triadType === 'augmented' && seventh===11) { suf7 = '\u207amaj7'; sym7 = 'aug(Maj7)'; } // ♭III⁺maj7 in mel minor
   else if (triadType === 'augmented' && seventh===10) { suf7 = '\u207a7'; sym7 = 'aug7'; }     // rare: augmented dominant
   else { suf7 = '('+seventh+')'; sym7 = '('+seventh+')'; }
 
@@ -154,7 +154,6 @@ const S = {
   heldPcs:       new Set(),   // pitch classes (mod 12) of held notes
   currentQ:      null,        // current question object
   pendingQ:      null,        // next question queued after correct answer
-  prevQ:         null,        // previous question (just completed)
   practiceCount: 0,
   lastDegree:    -1,
   showingAnswer: false,
@@ -165,11 +164,6 @@ const S = {
   voicingHL:     true,        // voicing guide highlight on/off
   scaleRefHL:    true,        // scale reference highlight on/off
   cachedVoicings: [],         // voicing data for current question
-  // Reaction time stats: keyed by "scaleName|chordType"
-  // Each value: { 0: {sum, count}, 1: {sum, count}, ... 6: {sum, count} }
-  stats:         {},
-  qStartTime:    0,           // Date.now() when current question was rendered
-  statsOn:       true,        // reaction time stats toggle
 };
 
 // ======================== MIDI ========================
@@ -229,7 +223,6 @@ function handleMidiMessage(msg) {
 
   // Advance to queued question when all keys released
   if (S.pendingQ && S.currentQ && S.currentQ.answered && S.heldMidiNotes.size === 0) {
-    S.prevQ = S.currentQ;
     S.currentQ = S.pendingQ;
     S.pendingQ = buildQuestion(); // pre-build next so preview is always ready
     S.showingAnswer = false;
@@ -297,10 +290,11 @@ function buildQuestion() {
   // In circle modes, advance key at the start of each new ii-V-I cycle
   if (S.mode === '251-all' && S.modeIndex > 0 && S.modeIndex % 3 === 0) {
     S.keyCircleIdx = (S.keyCircleIdx + 1) % 12;
-    document.getElementById('key-select').value = KEY_CIRCLE_4THS[S.keyCircleIdx];
   }
 
-  const rootName = document.getElementById('key-select').value;
+  const rootName = S.mode === '251-all'
+    ? KEY_CIRCLE_4THS[S.keyCircleIdx]
+    : document.getElementById('key-select').value;
   const scaleName = document.getElementById('scale-select').value;
   const chordType = getChordType();
   const scaleIv = SCALES[scaleName];
@@ -335,7 +329,6 @@ function buildQuestion() {
 
 function nextQuestion() {
   S.showingAnswer = false;
-  if (S.currentQ) S.prevQ = S.currentQ;
   if (S.pendingQ) {
     S.currentQ = S.pendingQ;
   } else {
@@ -365,11 +358,6 @@ function checkAnswer() {
         S.practiceCount++;
         document.getElementById('score').textContent = 'Practiced: ' + S.practiceCount;
         document.getElementById('roman-numeral').classList.add('correct');
-        // Record reaction time (random mode only, skip if answer was revealed)
-        if (S.mode === 'random' && !S.showingAnswer && S.qStartTime > 0) {
-          const elapsed = Date.now() - S.qStartTime;
-          if (elapsed <= 10000) recordStat(S.currentQ, elapsed);
-        }
         // pendingQ is already pre-built; no need to rebuild or update preview
         return;
       }
@@ -409,23 +397,6 @@ function showPendingPreview() {
   el.style.opacity = '0.18';
 }
 
-function showPrevPreview() {
-  const el = document.getElementById('prev-preview');
-  if (!S.prevQ) { el.style.opacity = '0'; return; }
-  el.innerHTML = romanHTML(S.prevQ);
-  el.style.opacity = '0.18';
-}
-
-function goToPrev() {
-  if (!S.prevQ) return;
-  S.pendingQ = S.currentQ;
-  S.currentQ = S.prevQ;
-  S.prevQ = null;
-  S.currentQ.answered = false;
-  S.showingAnswer = false;
-  renderQuestion();
-  showPendingPreview();
-}
 
 // ======================== UI ========================
 
@@ -457,7 +428,7 @@ function populateSelectors() {
 
 function renderQuestion() {
   const q = S.currentQ;
-  S.qStartTime = Date.now();
+  document.getElementById('key-select').value = q.rootName;
   document.getElementById('scale-label').textContent =
     displayNote(q.rootName) + ' ' + q.scaleName;
 
@@ -467,7 +438,6 @@ function renderQuestion() {
 
   document.getElementById('answer-display').style.opacity = '0';
   document.getElementById('answer-display').innerHTML = '';
-  showPrevPreview();
   showPendingPreview();
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
@@ -476,7 +446,7 @@ function renderQuestion() {
   renderVoicingGuide();
   updateCircleOfFifths();
   updateScaleRef();
-  renderStats();
+  renderChordRef();
 }
 
 function updateHeldNotesDisplay() {
@@ -502,21 +472,34 @@ function updateHeldNotesDisplay() {
  * Stored as [scaleStepOffset, functionLabel] pairs.
  */
 const VOICING_FORMULAS = {
-  'maj7':      { a: [[2,'3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'5']] },
+  'Maj7':      { a: [[2,'3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'5']] },
   'm7':        { a: [[2,'\u266d3'],[4,'5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
   '7':         { a: [[2,'3'],[4,'5',true],[5,'13',true],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[4,'5',true],[5,'13',true]] },
-  'm(maj7)':   { a: [[2,'\u266d3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
+  'm(Maj7)':   { a: [[2,'\u266d3'],[4,'5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'\u266d3'],[4,'5']] },
   '\u00f87':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
   '\u00b07':   { a: [[2,'\u266d3'],[4,'\u266d5'],[6,'\u266d\u266d7'],[8,'9']], b: [[6,'\u266d\u266d7'],[8,'9'],[2,'\u266d3'],[4,'\u266d5']] },
-  'aug(maj7)': { a: [[2,'3'],[4,'\u266f5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'\u266f5']] },
+  'aug(Maj7)': { a: [[2,'3'],[4,'\u266f5'],[6,'7'],[8,'9']], b: [[6,'7'],[8,'9'],[2,'3'],[4,'\u266f5']] },
   'aug7':      { a: [[2,'3'],[4,'\u266f5'],[6,'\u266d7'],[8,'9']], b: [[6,'\u266d7'],[8,'9'],[2,'3'],[4,'\u266f5']] },
 };
 
 // ---- Mini Piano Constants ----
 const MP = { ww: 24, wh: 88, bw: 17, bh: 56, step: 27, octs: 2, start: 48 };
-const MP_W_PCS = [0,2,4,5,7,9,11];
-const MP_B_PCS = [1,3,6,8,10];
-const MP_B_AFTER = [0,1,3,4,5]; // black key sits after this white-key index
+const IS_WHITE = [1,0,1,0,1,1,0,1,0,1,0,1]; // C=1,C#=0,D=1,...
+
+/** Compute white/black key layout for a piano starting at a given pitch class. */
+function keyLayout(startPc) {
+  const whites = [], blacks = [];
+  let wIdx = 0;
+  for (let off = 0; off < 12; off++) {
+    if (IS_WHITE[(startPc + off) % 12]) {
+      whites.push(off);
+      wIdx++;
+    } else {
+      blacks.push({ off, after: wIdx - 1 });
+    }
+  }
+  return { whites, blacks };
+}
 
 /** Convert an array of raw note names (bottom→top) into MIDI notes starting near C3. */
 function notesToMidi(rawNotes) {
@@ -533,9 +516,12 @@ function notesToMidi(rawNotes) {
 
 /** Render a 2-octave mini piano into `container`, highlighting the given MIDI notes.
  *  If showHL is false, keys are drawn but not highlighted (no color, no labels). */
-function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL, altMidiNotes) {
+function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL, altMidiNotes, opts) {
   if (showHL === undefined) showHL = true;
-  const totalW = MP.octs * 7 * MP.step;
+  const o = opts || {};
+  const octs  = o.octs  || MP.octs;
+  const start = o.start != null ? o.start : MP.start;
+  const totalW = octs * 7 * MP.step;
   container.style.width = totalW + 'px';
   container.style.height = MP.wh + 'px';
   container.innerHTML = '';
@@ -545,10 +531,12 @@ function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL, al
   const info = {};
   midiNotes.forEach((m, i) => { info[m] = { n: dispNames[i], f: funcLabels[i] }; });
 
+  const layout = keyLayout(start % 12);
+
   // White keys
-  for (let oct = 0; oct < MP.octs; oct++) {
-    MP_W_PCS.forEach((pc, i) => {
-      const m = MP.start + oct * 12 + pc;
+  for (let oct = 0; oct < octs; oct++) {
+    layout.whites.forEach((off, i) => {
+      const m = start + oct * 12 + off;
       const x = (oct * 7 + i) * MP.step;
       const hl = showHL && hlSet.has(m);
       const isAlt = hl && altSet.has(m);
@@ -560,10 +548,10 @@ function renderMiniPiano(container, midiNotes, dispNames, funcLabels, showHL, al
     });
   }
   // Black keys
-  for (let oct = 0; oct < MP.octs; oct++) {
-    MP_B_PCS.forEach((pc, i) => {
-      const m = MP.start + oct * 12 + pc;
-      const x = (oct * 7 + MP_B_AFTER[i]) * MP.step + MP.step - MP.bw / 2;
+  for (let oct = 0; oct < octs; oct++) {
+    layout.blacks.forEach(b => {
+      const m = start + oct * 12 + b.off;
+      const x = (oct * 7 + b.after) * MP.step + MP.step - MP.bw / 2;
       const hl = showHL && hlSet.has(m);
       const isAlt = hl && altSet.has(m);
       const k = document.createElement('div');
@@ -836,6 +824,7 @@ function initScaleRefToggle() {
     S.scaleRefHL = !S.scaleRefHL;
     tog.classList.toggle('on', S.scaleRefHL);
     updateScaleRef();
+    renderChordRef();
   });
 }
 
@@ -870,90 +859,138 @@ function updateScaleRef() {
   container.appendChild(piano);
 }
 
-// ======================== REACTION TIME STATS ========================
+// ======================== CHORD REFERENCE ========================
 
-/** Record a reaction time for a given question's scale+chordType+degree. */
-function recordStat(q, ms) {
-  const key = q.scaleName + '|' + q.chordType;
-  if (!S.stats[key]) {
-    S.stats[key] = {};
-    for (let d = 0; d < 7; d++) S.stats[key][d] = { sum: 0, count: 0 };
+/**
+ * Render a compact 7-white-key piano for a single chord.
+ * Right edge is determined by the highest chord note (+ 1 white key if it's black).
+ * No trailing black keys — only draw blacks between two white keys.
+ */
+function renderChordPiano(container, chordMidi, dispNames, funcLabels, showHL) {
+  const highest = Math.max(...chordMidi);
+
+  // Right boundary: if highest is black, go one white key higher
+  let rightWhite = highest;
+  if (!IS_WHITE[rightWhite % 12]) rightWhite++;
+
+  // Collect 8 white keys ending at rightWhite
+  const whiteKeys = [];
+  for (let m = rightWhite; whiteKeys.length < 8; m--) {
+    if (IS_WHITE[((m % 12) + 12) % 12]) whiteKeys.unshift(m);
   }
-  const d = S.stats[key][q.degree];
-  d.sum += ms;
-  d.count++;
-  renderStats();
-}
 
-function initStatsToggle() {
-  const tog = document.getElementById('stats-toggle');
-  tog.addEventListener('click', () => {
-    S.statsOn = !S.statsOn;
-    tog.classList.toggle('on', S.statsOn);
-    renderStats();
+  // Black keys: only between adjacent white keys (2 semitones apart → black in between)
+  const blackKeys = [];
+  for (let i = 0; i < whiteKeys.length - 1; i++) {
+    if (whiteKeys[i + 1] - whiteKeys[i] === 2) {
+      blackKeys.push({ midi: whiteKeys[i] + 1, afterIdx: i });
+    }
+  }
+
+  // Render
+  const totalW = 8 * MP.step;
+  container.style.width = totalW + 'px';
+  container.style.height = MP.wh + 'px';
+  container.innerHTML = '';
+
+  const hlSet = new Set(chordMidi);
+  const info = {};
+  chordMidi.forEach((m, i) => { info[m] = { n: dispNames[i], f: funcLabels[i] }; });
+
+  // White keys
+  whiteKeys.forEach((midi, i) => {
+    const x = i * MP.step;
+    const hl = showHL && hlSet.has(midi);
+    const k = document.createElement('div');
+    k.className = 'mp-key w' + (hl ? ' hl' : '');
+    k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.ww + 'px;height:' + MP.wh + 'px';
+    container.appendChild(k);
+    if (hl) addPianoLabels(container, x, MP.ww, info[midi], false, 'w');
+  });
+
+  // Black keys
+  blackKeys.forEach(b => {
+    const x = b.afterIdx * MP.step + MP.step - MP.bw / 2;
+    const hl = showHL && hlSet.has(b.midi);
+    const k = document.createElement('div');
+    k.className = 'mp-key b' + (hl ? ' hl' : '');
+    k.style.cssText = 'left:' + x + 'px;top:0;width:' + MP.bw + 'px;height:' + MP.bh + 'px';
+    container.appendChild(k);
+    if (hl) addPianoLabels(container, x, MP.bw, info[b.midi], false, 'b');
   });
 }
 
-/** Render reaction time bars below the Scale Reference piano. */
-function renderStats() {
-  const container = document.getElementById('stats-bars');
+/**
+ * Render root-position chord diagrams for all 7 scale degrees.
+ * Each row: chord name label + mini piano with highlighted chord tones.
+ */
+function renderChordRef() {
+  const container = document.getElementById('chord-ref');
   if (!container) return;
-  if (!S.statsOn || !S.currentQ) { container.innerHTML = ''; return; }
-
-  const key = S.currentQ.scaleName + '|' + S.currentQ.chordType;
-  const data = S.stats[key];
-  if (!data) { container.innerHTML = ''; return; }
-
-  // Compute averages
-  const avgs = [];
-  let maxAvg = 0;
-  for (let d = 0; d < 7; d++) {
-    const avg = data[d].count > 0 ? data[d].sum / data[d].count : 0;
-    avgs.push(avg);
-    if (avg > maxAvg) maxAvg = avg;
-  }
-
-  // If no data yet, hide
-  if (maxAvg === 0) { container.innerHTML = ''; return; }
+  if (!S.currentQ) { container.innerHTML = ''; return; }
 
   const q = S.currentQ;
-  const barMax = 48; // max bar height in px
+  const chordType = q.chordType;
+  const stackIdx = chordType === '7th' ? [0, 2, 4, 6] : [0, 2, 4];
+  container.innerHTML = '';
 
-  // Color: green (<1.5s) → yellow (1.5-3s) → warm red (>3s)
-  function barColor(ms) {
-    if (ms <= 1500) return 'var(--grn)';
-    if (ms <= 3000) return 'var(--hl)';
-    return '#c27a5a';
-  }
+  for (let deg = 0; deg < 7; deg++) {
+    const chordPcs = stackIdx.map(i => q.scalePcs[(deg + i) % 7]);
+    const chordNotes = stackIdx.map(i => q.scaleNotes[(deg + i) % 7]);
+    const rootPc = chordPcs[0];
+    const intervalsFromRoot = chordPcs.map(pc => ((pc - rootPc) % 12 + 12) % 12);
+    const quality = getChordQuality(intervalsFromRoot, chordType);
+    // Chord name: e.g. "G Maj7", "A m7"
+    const chordName = displayNote(chordNotes[0]) + (quality.chordSymbol ? ' ' + quality.chordSymbol : '');
 
-  let html = '';
-  for (let d = 0; d < 7; d++) {
-    const avg = avgs[d];
-    const h = avg > 0 ? Math.max(4, Math.round((avg / maxAvg) * barMax)) : 0;
-    const label = avg > 0 ? (avg / 1000).toFixed(1) + 's' : '';
-    const degLabel = ROMAN[d];
-    const color = avg > 0 ? barColor(avg) : 'transparent';
-    html += '<div class="stat-col">' +
-      '<div class="stat-time">' + label + '</div>' +
-      '<div class="stat-bar" style="height:' + h + 'px;background:' + color + '"></div>' +
-      '<div class="stat-deg">' + degLabel + '</div>' +
-      '</div>';
+    const row = document.createElement('div');
+    row.className = 'chord-ref-row';
+
+    // Label: concrete chord name
+    const label = document.createElement('div');
+    label.className = 'chord-ref-label' + (deg === q.degree ? ' active' : '');
+    label.textContent = chordName;
+    row.appendChild(label);
+
+    // Mini piano in a scaled-down wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chord-ref-piano-wrap';
+    const piano = document.createElement('div');
+    piano.className = 'mini-piano';
+
+    // Build ascending MIDI notes for root position chord
+    const chordMidi = [];
+    let cur = 48;
+    for (const pc of chordPcs) {
+      while (cur % 12 !== pc) cur++;
+      chordMidi.push(cur);
+      cur++;
+    }
+
+    const dispNames = chordMidi.map((_, i) => displayNote(chordNotes[i]));
+    const funcLabels = chordMidi.map((_, i) => ivToFunc(intervalsFromRoot[i]));
+
+    renderChordPiano(piano, chordMidi, dispNames, funcLabels, S.scaleRefHL);
+    wrapper.appendChild(piano);
+    row.appendChild(wrapper);
+    container.appendChild(row);
   }
-  container.innerHTML = html;
 }
 
 // ======================== MODE HELPERS ========================
+function enforceMajorForMode(mode) {
+  if (mode !== '251' && mode !== '251-all') return;
+  const scaleSel = document.getElementById('scale-select');
+  if (scaleSel.value !== 'Major (Ionian)') {
+    scaleSel.value = 'Major (Ionian)';
+    showScaleNotice();
+  }
+}
+
 function setMode(mode) {
   S.pendingQ = null;  // discard stale pre-built question
-  S.stats = {};       // reset reaction time stats on mode change
   // ii-V-I modes only apply to Major — auto-switch scale if needed
-  if (mode === '251' || mode === '251-all') {
-    const scaleSel = document.getElementById('scale-select');
-    if (scaleSel.value !== 'Major (Ionian)') {
-      scaleSel.value = 'Major (Ionian)';
-      showScaleNotice();
-    }
-  }
+  enforceMajorForMode(mode);
   S.mode = mode;
   S.modeIndex = 0;
   if (mode === '251-all') {
@@ -988,7 +1025,6 @@ function setupEvents() {
       btn.classList.add('active');
       S.modeIndex = 0;
       S.pendingQ = null;
-      S.stats = {};
       nextQuestion();
     });
   });
@@ -1009,7 +1045,12 @@ function setupEvents() {
     }
     nextQuestion();
   });
-  document.getElementById('scale-select').addEventListener('change', () => { S.modeIndex = 0; S.pendingQ = null; S.stats = {}; nextQuestion(); });
+  document.getElementById('scale-select').addEventListener('change', () => {
+    enforceMajorForMode(S.mode);
+    S.modeIndex = 0;
+    S.pendingQ = null;
+    nextQuestion();
+  });
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -1023,7 +1064,6 @@ function init() {
   populateSelectors();
   buildCircleOfFifths();
   initScaleRefToggle();
-  initStatsToggle();
   setupEvents();
   initMidi();
   nextQuestion();
