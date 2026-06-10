@@ -55,7 +55,7 @@ select:hover{border-color:var(--grn-l)}
 #voicing-section{padding:0}
 #voicing-pianos{display:flex;flex-direction:column;align-items:flex-start;gap:18px;min-height:40px}
 .voicing-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%}
-.voicing-label{font-size:.7rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;text-align:left}
+.voicing-label{font-size:.7rem;color:var(--txt2);letter-spacing:1px;text-align:left}
 /* ---- Mini piano ---- */
 .mini-piano{position:relative;user-select:none}
 .mp-key{position:absolute;border-radius:0 0 3px 3px}
@@ -97,7 +97,7 @@ select:hover{border-color:var(--grn-l)}
 /* ---- Scale ref piano (left col) ---- */
 #scale-ref-section{width:100%}
 #scale-ref-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
-.sr-title{font-size:.78rem;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;font-weight:400}
+.sr-title{font-size:.78rem;color:var(--txt2);letter-spacing:1px;font-weight:400}
 /* ---- Left bottom: Chord Ref | CoF side by side ---- */
 #left-bottom{display:flex;gap:12px;align-items:flex-start;width:100%}
 /* ---- Chord Reference ---- */

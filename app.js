@@ -148,6 +148,7 @@ function displayNote(name) {
 // ======================== STATE ========================
 const KEY_CIRCLE_4THS = ['C','F','Bb','Eb','Ab','Db','Gb','B','E','A','D','G'];
 const PROG_251 = [1, 4, 0];
+const SECONDARY_TARGETS = [0, 1, 2, 3, 4, 5];
 
 const S = {
   heldMidiNotes: new Set(),   // raw MIDI note numbers currently held
@@ -157,7 +158,7 @@ const S = {
   practiceCount: 0,
   lastDegree:    -1,
   showingAnswer: false,
-  mode:          'random',    // 'random' | 'sequential' | '251' | '251-all'
+  mode:          'random',    // 'random' | 'sequential' | '251' | '251-all' | 'secondary'
   modeIndex:     0,           // position in sequential or progression sequence
   keyCircleIdx:  0,           // position in KEY_CIRCLE_4THS
   checkTimer:    null,        // debounce timer for checkAnswer
@@ -254,8 +255,8 @@ function pickDegree() {
  * Build all valid pitch-class sets a player can use to answer.
  * Generated combinatorially from chord tones + extensions (9th, 13th).
  *
- * For each rootless voicing, we accept both with and without bass root,
- * since a player may or may not double the root in the left hand.
+ * 9th/13th voicings include the root; pure rootless shapes are not accepted
+ * as complete answers.
  */
 function buildValidSets(chordPcs, chordType, scalePcs, degree, intervalsFromRoot) {
   const sets = [new Set(chordPcs)]; // full chord is always valid
@@ -265,28 +266,131 @@ function buildValidSets(chordPcs, chordType, scalePcs, degree, intervalsFromRoot
         fifthPc = chordPcs[2], seventhPc = chordPcs[3];
   const ninthPc = scalePcs[(degree + 1) % 7];
 
-  // Helper: push a voicing set AND its "with bass root" variant
-  function addWithOptionalRoot(pcs) {
-    sets.push(new Set(pcs));
-    if (!pcs.includes(rootPc)) sets.push(new Set([rootPc, ...pcs]));
-  }
-
-  addWithOptionalRoot([rootPc, thirdPc, seventhPc]);          // Drop 5
-  addWithOptionalRoot([thirdPc, fifthPc, seventhPc, ninthPc]); // Rootless
-  addWithOptionalRoot([thirdPc, seventhPc, ninthPc]);          // Rootless drop 5
+  sets.push(new Set([rootPc, thirdPc, seventhPc]));          // Drop 5
+  sets.push(new Set([rootPc, thirdPc, fifthPc, seventhPc, ninthPc])); // 9th
+  sets.push(new Set([rootPc, thirdPc, seventhPc, ninthPc]));          // 9th drop 5
 
   // Dominant: also accept 13th in place of 5th
   const isDom = intervalsFromRoot[1] === 4 && intervalsFromRoot[3] === 10;
   if (isDom) {
     const thirteenthPc = scalePcs[(degree + 5) % 7];
-    addWithOptionalRoot([thirdPc, thirteenthPc, seventhPc, ninthPc]); // 13th rootless
-    addWithOptionalRoot([thirteenthPc, seventhPc, ninthPc]);          // 13th rootless drop 5
+    sets.push(new Set([rootPc, thirdPc, thirteenthPc, seventhPc, ninthPc])); // 13th
+    sets.push(new Set([rootPc, thirteenthPc, seventhPc, ninthPc]));          // 13th drop 3
   }
 
   return sets;
 }
 
+function buildLimitedSeventhSets(chordPcs, includeShell) {
+  const rootPc = chordPcs[0], thirdPc = chordPcs[1], seventhPc = chordPcs[3];
+  const sets = [
+    new Set(chordPcs),                    // Full 7th
+    new Set([rootPc, thirdPc, seventhPc]) // Drop 5
+  ];
+  if (includeShell) sets.push(new Set([thirdPc, seventhPc]));
+  return sets;
+}
+
+function chordFromRootIntervals(rootName, intervals) {
+  const rootPc = noteToPc(rootName);
+  const rootIdx = LETTERS.indexOf(rootName[0]);
+  return intervals.map((iv, i) => {
+    const targetPc = (rootPc + iv) % 12;
+    const letter = LETTERS[(rootIdx + i * 2) % 7];
+    return pcToNoteName(targetPc, letter);
+  });
+}
+
+function makeSeventhChordQ(rootName, chordNotes, chordPcs, validSets) {
+  const intervalsFromRoot = chordPcs.map(pc => ((pc - chordPcs[0]) % 12 + 12) % 12);
+  return {
+    rootName,
+    chordType: '7th',
+    chordNotes,
+    chordPcs,
+    intervalsFromRoot,
+    quality: getChordQuality(intervalsFromRoot, '7th'),
+    validSets
+  };
+}
+
+function secondaryVoicings(q, includeShell) {
+  const n = q.chordNotes;
+  const ivs = q.intervalsFromRoot;
+  const voicings = [
+    { label: 'Full', raw: [n[0], n[1], n[2], n[3]], funcs: ['R', ivToFunc(ivs[1]), ivToFunc(ivs[2]), ivToFunc(ivs[3])] },
+    { label: 'Drop 5', raw: [n[0], n[1], n[3]], funcs: ['R', ivToFunc(ivs[1]), ivToFunc(ivs[3])] },
+  ];
+  if (includeShell) voicings.push({ label: 'Shell', raw: [n[1], n[3]], funcs: [ivToFunc(ivs[1]), ivToFunc(ivs[3])] });
+  return voicings;
+}
+
+function activeSecondaryChord(q) {
+  return q.secondaryStage === 'target' ? q.targetQ : q.dominantQ;
+}
+
+function pickSecondaryTargetDegree() {
+  const candidates = SECONDARY_TARGETS.filter(d => d !== S.lastDegree);
+  const degree = candidates[Math.floor(Math.random() * candidates.length)];
+  S.lastDegree = degree;
+  return degree;
+}
+
+function buildSecondaryQuestion() {
+  const rootName = document.getElementById('key-select').value;
+  const scaleName = 'Major (Ionian)';
+  const scaleIv = SCALES[scaleName];
+  const scaleNotes = getScaleNotes(rootName, scaleIv);
+  const scalePcs = getScalePcs(rootName, scaleIv);
+  const targetDegree = pickSecondaryTargetDegree();
+  const stackIdx = [0, 2, 4, 6];
+
+  const targetNotes = stackIdx.map(i => scaleNotes[(targetDegree + i) % 7]);
+  const targetPcs = stackIdx.map(i => scalePcs[(targetDegree + i) % 7]);
+  const targetQ = makeSeventhChordQ(
+    targetNotes[0],
+    targetNotes,
+    targetPcs,
+    buildLimitedSeventhSets(targetPcs, false)
+  );
+
+  const dominantRootPc = (targetPcs[0] + 7) % 12;
+  const dominantRootLetter = LETTERS[(LETTERS.indexOf(targetNotes[0][0]) + 4) % 7];
+  const dominantRoot = pcToNoteName(dominantRootPc, dominantRootLetter);
+  const dominantNotes = chordFromRootIntervals(dominantRoot, [0, 4, 7, 10]);
+  const dominantPcs = dominantNotes.map(noteToPc);
+  const dominantQ = makeSeventhChordQ(
+    dominantRoot,
+    dominantNotes,
+    dominantPcs,
+    buildLimitedSeventhSets(dominantPcs, true)
+  );
+
+  const targetQuality = targetQ.quality;
+  const targetBase = ROMAN[targetDegree];
+  const targetRoman = targetQuality.romanCase === 'upper' ? targetBase : targetBase.toLowerCase();
+
+  return {
+    secondary: true,
+    secondaryStage: 'dominant',
+    rootName, scaleName, chordType: '7th', degree: targetDegree,
+    scaleNotes, scalePcs, scaleIv,
+    dominantQ, targetQ,
+    chordNotes: dominantNotes,
+    chordPcs: dominantPcs,
+    intervalsFromRoot: dominantQ.intervalsFromRoot,
+    quality: dominantQ.quality,
+    prefix: 'V/',
+    romanCased: targetRoman,
+    targetRoman,
+    validSets: dominantQ.validSets,
+    answered: false
+  };
+}
+
 function buildQuestion() {
+  if (S.mode === 'secondary') return buildSecondaryQuestion();
+
   // In circle modes, advance key at the start of each new ii-V-I cycle
   if (S.mode === '251-all' && S.modeIndex > 0 && S.modeIndex % 3 === 0) {
     S.keyCircleIdx = (S.keyCircleIdx + 1) % 12;
@@ -354,6 +458,20 @@ function checkAnswer() {
     if (!S.currentQ || S.currentQ.answered) return;
     for (const validSet of S.currentQ.validSets) {
       if (setsEqual(S.heldPcs, validSet)) {
+        if (S.currentQ.secondary && S.currentQ.secondaryStage === 'dominant') {
+          S.currentQ.secondaryStage = 'target';
+          const targetQ = S.currentQ.targetQ;
+          S.currentQ.chordNotes = targetQ.chordNotes;
+          S.currentQ.chordPcs = targetQ.chordPcs;
+          S.currentQ.intervalsFromRoot = targetQ.intervalsFromRoot;
+          S.currentQ.quality = targetQ.quality;
+          S.currentQ.validSets = targetQ.validSets;
+          document.getElementById('roman-numeral').innerHTML =
+            '<span class="rn-prefix">\u2192</span>' +
+            '<span class="rn-numeral">' + S.currentQ.targetRoman + '</span>';
+          renderVoicingGuide();
+          return;
+        }
         S.currentQ.answered = true;
         S.practiceCount++;
         document.getElementById('score').textContent = 'Practiced: ' + S.practiceCount;
@@ -376,6 +494,20 @@ function showAnswer() {
   if (!S.currentQ) return;
   S.showingAnswer = true;
   const q = S.currentQ;
+  if (q.secondary) {
+    const dom = q.dominantQ;
+    const target = q.targetQ;
+    const domName = displayNote(dom.chordNotes[0]) + dom.quality.chordSymbol;
+    const targetName = displayNote(target.chordNotes[0]) + target.quality.chordSymbol;
+    const domNotes = dom.chordNotes.map(displayNote).join('  ');
+    const targetNotes = target.chordNotes.map(displayNote).join('  ');
+    document.getElementById('answer-display').innerHTML =
+      '<strong>' + domName + ' \u2192 ' + targetName + '</strong> &nbsp; ( ' +
+      domNotes + ' \u2192 ' + targetNotes + ' )';
+    document.getElementById('answer-display').style.opacity = '1';
+    renderVoicingGuide();
+    return;
+  }
   const chordName = displayNote(q.chordNotes[0]) + q.quality.chordSymbol;
   const noteNames = q.chordNotes.map(displayNote).join('  ');
   document.getElementById('answer-display').innerHTML =
@@ -402,6 +534,9 @@ function showPendingPreview() {
 
 /** Build Roman numeral HTML from a question object (or any {prefix, romanCased, quality}). */
 function romanHTML(q) {
+  if (q.secondary) {
+    return '<span class="rn-numeral">V of ' + q.targetRoman + '</span>';
+  }
   return '<span class="rn-prefix">' + q.prefix + '</span>' +
     '<span class="rn-numeral">' + q.romanCased + '</span>' +
     '<span class="rn-suffix">' + q.quality.suffix + '</span>';
@@ -429,6 +564,7 @@ function populateSelectors() {
 function renderQuestion() {
   const q = S.currentQ;
   document.getElementById('key-select').value = q.rootName;
+  document.getElementById('scale-select').value = q.scaleName;
   document.getElementById('scale-label').textContent =
     displayNote(q.rootName) + ' ' + q.scaleName;
 
@@ -465,8 +601,7 @@ function updateHeldNotesDisplay() {
 // ======================== VOICING GUIDE ========================
 
 /**
- * Rootless voicing formulas for jazz LH comping (Bill Evans style).
- * The bass player covers the root; the pianist voices without it.
+ * 9th voicing formulas built from common rootless A/B shapes plus root.
  *
  * Type A — built upward from the 3rd.  Type B — built upward from the 7th.
  * Stored as [scaleStepOffset, functionLabel] pairs.
@@ -588,6 +723,18 @@ function addPianoLabels(container, x, w, info, isAlt, keyType) {
 const IV_FUNC = { 0:'R', 3:'\u266d3', 4:'3', 6:'\u266d5', 7:'5', 8:'\u266f5', 9:'\u266d\u266d7', 10:'\u266d7', 11:'7' };
 function ivToFunc(iv) { return IV_FUNC[iv] || '?'; }
 
+function ninthChordLabel(chordSymbol) {
+  if (chordSymbol === 'Maj7') return 'Maj9';
+  if (chordSymbol === 'm7') return 'min9';
+  if (chordSymbol === '7') return 'Dom9';
+  if (chordSymbol === 'm(Maj7)') return 'min(Maj9)';
+  if (chordSymbol === '\u00f87') return '\u00f89';
+  if (chordSymbol === '\u00b07') return '\u00b09';
+  if (chordSymbol === 'aug(Maj7)') return 'aug(Maj9)';
+  if (chordSymbol === 'aug7') return 'aug(Dom9)';
+  return chordSymbol + '(9)';
+}
+
 // ---- Build ALL voicing options for the current question ----
 function getAllVoicings(q) {
   if (q.chordType === 'triad') {
@@ -609,21 +756,22 @@ function getAllVoicings(q) {
     { id: 'drop5', label: 'Drop 5',  raw: [n[0],n[1],n[3]],      funcs: [fR,f3,f7] },
   ];
 
-  // Rootless voicings from formulas
+  // 9th voicings from A/B formulas, with root added below the upper structure.
   const sym = q.quality.chordSymbol;
   const formula = VOICING_FORMULAS[sym];
   if (formula) {
     function resolve(slots) {
-      const raw = slots.map(s => q.scaleNotes[(q.degree + s[0]) % 7]);
-      const funcs = slots.map(s => s[1]);
+      const raw = [q.scaleNotes[q.degree], ...slots.map(s => q.scaleNotes[(q.degree + s[0]) % 7])];
+      const funcs = ['R', ...slots.map(s => s[1])];
       const altIdx = slots
-        .map((s, i) => (s[2] ? i : -1))
+        .map((s, i) => (s[2] ? i + 1 : -1))
         .filter(i => i >= 0);
       return { raw, funcs, altIdx };
     }
     const rA = resolve(formula.a), rB = resolve(formula.b);
-    voicings.push({ id: 'rootlessA', label: 'Rootless A', ...rA });
-    voicings.push({ id: 'rootlessB', label: 'Rootless B', ...rB });
+    const label = ninthChordLabel(sym);
+    voicings.push({ id: 'ninthA', label: label + ' A', ...rA });
+    voicings.push({ id: 'ninthB', label: label + ' B', ...rB });
   }
 
   return voicings;
@@ -659,7 +807,12 @@ function renderVoicingGuide() {
   pianoEl.innerHTML = '';
   if (!S.currentQ) return;
 
-  S.cachedVoicings = getAllVoicings(S.currentQ);
+  if (S.currentQ.secondary) {
+    const activeQ = activeSecondaryChord(S.currentQ);
+    S.cachedVoicings = secondaryVoicings(activeQ, S.currentQ.secondaryStage === 'dominant');
+  } else {
+    S.cachedVoicings = getAllVoicings(S.currentQ);
+  }
 
   // Highlight toggle (compact switch)
   const row = document.createElement('div');
@@ -978,19 +1131,26 @@ function renderChordRef() {
 }
 
 // ======================== MODE HELPERS ========================
-function enforceMajorForMode(mode) {
-  if (mode !== '251' && mode !== '251-all') return;
+function setChordTypeButton(type) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+}
+
+function enforceModeConstraints(mode) {
   const scaleSel = document.getElementById('scale-select');
-  if (scaleSel.value !== 'Major (Ionian)') {
+  const needsMajor = mode === '251' || mode === '251-all' || mode === 'secondary';
+  if (needsMajor && scaleSel.value !== 'Major (Ionian)') {
     scaleSel.value = 'Major (Ionian)';
     showScaleNotice();
+  }
+  if (mode === 'secondary' && getChordType() !== '7th') {
+    setChordTypeButton('7th');
   }
 }
 
 function setMode(mode) {
   S.pendingQ = null;  // discard stale pre-built question
-  // ii-V-I modes only apply to Major — auto-switch scale if needed
-  enforceMajorForMode(mode);
+  // These modes only apply cleanly to Major — auto-switch scale if needed.
+  enforceModeConstraints(mode);
   S.mode = mode;
   S.modeIndex = 0;
   if (mode === '251-all') {
@@ -1021,8 +1181,8 @@ function setupEvents() {
   // Chord type buttons
   document.querySelectorAll('.type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      setChordTypeButton(btn.dataset.type);
+      enforceModeConstraints(S.mode);
       S.modeIndex = 0;
       S.pendingQ = null;
       nextQuestion();
@@ -1046,7 +1206,7 @@ function setupEvents() {
     nextQuestion();
   });
   document.getElementById('scale-select').addEventListener('change', () => {
-    enforceMajorForMode(S.mode);
+    enforceModeConstraints(S.mode);
     S.modeIndex = 0;
     S.pendingQ = null;
     nextQuestion();
