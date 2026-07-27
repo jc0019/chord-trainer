@@ -1,12 +1,25 @@
-:root{--grn:#658A6E;--grn-l:#8BAF92;--grn-xl:#B5CCBA;--hl:#EAD279;--hl-l:#F5E9B3;--bg:#F5F2EB;--card:#FBF9F4;--txt:#3a3a3a;--txt2:#918a80;--txt3:#c0b9af;--border:#ddd8cf;--border-l:#e6e2da}
+:root{--acc:#658A6E;--acc-l:#8BAF92;--acc-xl:#B5CCBA;--hl:#EAD279;--hl-l:#F5E9B3;--hl-deep:#D5AE3B;--bg:#F5F2EB;--card:#FBF9F4;--txt:#3a3a3a;--txt2:#918a80;--txt3:#c0b9af;--border:#ddd8cf;--border-l:#e6e2da;--key-w:#FAF8F4;--key-w-bd:#d8d4cc}
+/* ---- Themes: "paper" only — background, cards, borders, muted text and the
+   piano's white keys shift toward the theme hue. The green accent, the yellow
+   key highlight and the correct/wrong flash colors stay identical everywhere. ---- */
+body[data-theme="lavender"]{--hl:#C9B6E4;--hl-l:#E1D7F1;--hl-deep:#9678C6;--bg:#ECE6F2;--card:#F8F5FB;--txt2:#847B92;--txt3:#AFA5BF;--border:#CFC5DC;--border-l:#DFD6E9;--key-w:#FAF8FC;--key-w-bd:#CFC7DA}
+body[data-theme="sky"]{--hl:#A9C9E2;--hl-l:#CFE2F2;--hl-deep:#5B8CB8;--bg:#E5ECF2;--card:#F4F8FB;--txt2:#788794;--txt3:#A3B1BF;--border:#C3D0DC;--border-l:#D6E0E9;--key-w:#F6FAFC;--key-w-bd:#C7D3DD}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'SF Pro Display',-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;padding:24px 28px}
 #app{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:18px}
 /* ---- Header ---- */
 header{display:flex;justify-content:space-between;align-items:center;padding:0 2px}
-header h1{font-size:1.1rem;font-weight:500;color:var(--grn);letter-spacing:.5px}
+#header-right{display:flex;align-items:center;gap:16px}
+#theme-dots{display:flex;gap:8px;align-items:center}
+.theme-dot{width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid var(--card);box-shadow:0 0 0 1px var(--border);padding:0;transition:box-shadow .2s}
+.theme-dot[data-theme="sage"]{background:#EAD279}
+.theme-dot[data-theme="lavender"]{background:#7C6E9B}
+.theme-dot[data-theme="sky"]{background:#5E82A0}
+.theme-dot.active{box-shadow:0 0 0 2px var(--acc)}
+.theme-dot:hover:not(.active){box-shadow:0 0 0 2px var(--acc-xl)}
+header h1{font-size:1.1rem;font-weight:500;color:var(--acc);letter-spacing:.5px}
 #midi-status{font-size:.76rem;padding:4px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card)}
-#midi-status.connected{color:var(--grn);border-color:var(--grn-xl)}
+#midi-status.connected{color:var(--acc);border-color:var(--acc-xl)}
 #midi-status.disconnected{color:#b07;border-color:#e0c8cf}
 /* ---- Control bar: grouped, labeled ---- */
 #controls-row{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch}
@@ -17,20 +30,25 @@ header h1{font-size:1.1rem;font-weight:500;color:var(--grn);letter-spacing:.5px}
 .setting-group{display:flex;align-items:center;gap:4px}
 .setting-group label{display:none}
 select{background:var(--bg);color:var(--txt);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:.82rem;cursor:pointer;transition:border-color .2s}
-select:focus{outline:none;border-color:var(--grn)}
-select:hover{border-color:var(--grn-l)}
+/* Fixed widths: on macOS a select resizes to its SELECTED option's text, and the
+   key/scale values change programmatically (CoF clicks, 251-all cycling, mode
+   constraints) — variable width would shift the whole controls row. */
+#key-select{width:74px}
+#scale-select{width:160px}
+select:focus{outline:none;border-color:var(--acc)}
+select:hover{border-color:var(--acc-l)}
 #chord-type-btns{display:flex;gap:3px}
 .type-btn,.content-btn{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;transition:all .2s;font-weight:400}
-.type-btn.active,.content-btn.active{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:500}
-.type-btn:hover:not(.active),.content-btn:hover:not(.active){border-color:var(--grn-l);color:var(--txt)}
+.type-btn.active,.content-btn.active{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:500}
+.type-btn:hover:not(.active),.content-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}
 /* Contextual sub-controls (Order / Keys / Mix), shown per Practice content */
 .ctrl-sub{display:flex;align-items:center;gap:5px;padding-left:12px;margin-left:6px;border-left:1px solid var(--border)}
 .sub-btn{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:.76rem;cursor:pointer;transition:all .2s}
-.sub-btn.active{background:var(--grn-l);color:#fff;border-color:var(--grn-l);font-weight:500}
-.sub-btn:hover:not(.active){border-color:var(--grn-l);color:var(--txt)}
+.sub-btn.active{background:var(--acc-l);color:#fff;border-color:var(--acc-l);font-weight:500}
+.sub-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}
 select:disabled{opacity:.45;cursor:not-allowed}
 /* ---- Cards ---- */
-.card{background:var(--card);border:1px solid var(--border-l);border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(101,138,110,.05)}
+.card{background:var(--card);border:1px solid var(--border-l);border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px color-mix(in srgb,var(--acc) 5%,transparent)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .card-title{font-size:.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt2);font-weight:500}
 /* ---- 3-column main area ---- */
@@ -38,24 +56,29 @@ select:disabled{opacity:.45;cursor:not-allowed}
 #col-left,#col-center,#col-right{display:flex;flex-direction:column;gap:18px;min-width:0}
 /* ---- Question card ---- */
 #question-area{text-align:center;padding:28px 24px 16px}
-#scale-label{font-size:.88rem;color:var(--txt2);letter-spacing:2px;font-weight:400}
-#roman-numeral{font-size:5.5rem;font-family:Georgia,'Times New Roman',serif;line-height:1;margin:14px 0 10px;min-height:5.5rem;display:flex;align-items:center;justify-content:center;transition:color .3s;color:var(--txt)}
+/* Lines that may contain ♭/♯ glyphs get PINNED heights: accidentals come from
+   fallback symbol fonts whose vertical metrics differ (esp. macOS), and a
+   'normal' line box would grow a few px and push everything below it down. */
+#scale-label{font-size:.88rem;color:var(--txt2);letter-spacing:2px;font-weight:400;height:1.3em;line-height:1.3em;overflow:visible}
+#roman-numeral{font-size:5.5rem;font-family:Georgia,'Times New Roman',serif;line-height:1;margin:14px 0 10px;height:5.5rem;display:flex;align-items:center;justify-content:center;transition:color .3s;color:var(--txt);white-space:nowrap}
 .rn-prefix{font-size:.55em;margin-right:2px;position:relative;top:-.05em}
 .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:2px}
-#roman-numeral.correct{color:var(--grn)}
-#next-preview{font-family:Georgia,'Times New Roman',serif;font-size:1.8rem;color:var(--txt);opacity:0;min-height:2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+#roman-numeral.correct{color:var(--acc)}
+#next-preview{font-family:Georgia,'Times New Roman',serif;font-size:1.8rem;color:var(--txt);opacity:0;height:2.2rem;transition:opacity .3s;display:flex;align-items:center;justify-content:center;margin-bottom:10px;white-space:nowrap}
 #next-preview .rn-suffix{font-size:.45em;position:relative;top:-.7em;margin-left:1px}
 #next-preview .rn-prefix{font-size:.55em;margin-right:1px}
 #action-btns{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
 #action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 0;min-width:110px;font-size:.82rem;cursor:pointer;transition:all .2s;text-align:center}
-#action-btns button:hover{border-color:var(--grn-l);color:var(--txt)}
-#answer-display{font-size:1rem;color:var(--grn);min-height:1.5em;transition:opacity .3s}
+#action-btns button:hover{border-color:var(--acc-l);color:var(--txt)}
+/* Fixed two-line budget so line-wrap (long flat-key names) never resizes the card */
+#answer-display{font-size:1rem;color:var(--acc);height:2.9em;overflow:hidden;transition:opacity .3s}
+#scale-label{white-space:nowrap}
 /* ---- Live feedback strip (inside question card) ---- */
 #feedback-area{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:1px solid var(--border-l);margin-top:12px;padding-top:10px;min-height:64px}
 #feedback{font-size:.95rem;font-weight:500;transition:opacity .3s}
-#feedback.correct{color:var(--grn)}
-#feedback.info{color:var(--grn-l)}
-#held-notes{text-align:center;font-size:1rem;letter-spacing:1px;color:var(--txt2);min-height:1.5em}
+#feedback.correct{color:var(--acc)}
+#feedback.info{color:var(--acc-l)}
+#held-notes{text-align:center;font-size:1rem;letter-spacing:1px;color:var(--txt2);height:1.5em;line-height:1.5em;white-space:nowrap;overflow:visible}
 #score{font-size:.78rem;color:var(--txt3);white-space:nowrap}
 /* ---- Voicing card (right col) ---- */
 #voicing-pianos{display:flex;flex-direction:column;align-items:flex-start;gap:18px;min-height:40px}
@@ -65,7 +88,7 @@ select:disabled{opacity:.45;cursor:not-allowed}
 /* ---- Mini piano ---- */
 .mini-piano{position:relative;user-select:none}
 .mp-key{position:absolute;border-radius:0 0 3px 3px}
-.mp-key.w{background:#FAF8F4;border:1px solid #d8d4cc;z-index:1}
+.mp-key.w{background:var(--key-w);border:1px solid var(--key-w-bd);z-index:1}
 .mp-key.b{background:#4a4a4a;border:1px solid #3a3a3a;z-index:2}
 .mp-key.hl{background:var(--hl)}
 .mp-key.hl.alt{background:var(--hl-l)}
@@ -75,50 +98,54 @@ select:disabled{opacity:.45;cursor:not-allowed}
 .mp-lbl.nn{font-weight:500}
 .mp-lbl.fn{font-weight:700;color:#1e1e1e}
 .mp-lbl.alt{font-style:italic;opacity:.68}
-/* ---- Circle of Fifths: full ring always visible, out-of-scale keys fade ---- */
+/* ---- Circle of Fifths: segmented donut (major band + minor band + center) ---- */
 #cof-section{display:flex;flex-direction:column;align-items:center}
 #cof-section .card-head{align-self:stretch}
 #cof-svg{width:100%;height:auto;max-width:380px}
-#cof-svg text{font-family:'SF Pro Display',-apple-system,sans-serif;pointer-events:none}
-#cof-svg .cof-wedge{fill:transparent;transition:fill .3s}
-#cof-svg .cof-wedge.active{fill:rgba(101,138,110,.16)}
-#cof-svg .cof-wedge.in-scale{fill:rgba(234,210,121,.15)}
-#cof-svg .cof-wedge.masked{fill:transparent}
-#cof-svg .cof-key{fill:#a8a29a;font-size:15px;font-weight:400;text-anchor:middle;dominant-baseline:central;transition:all .25s}
-#cof-svg .cof-key.active{fill:var(--grn);font-size:17px;font-weight:700}
-#cof-svg .cof-key.in-scale{fill:var(--txt);font-weight:500}
-#cof-svg .cof-key.masked{fill:var(--txt3);opacity:.45}
-#cof-svg .cof-minor{fill:#c8c2b8;font-size:11.5px;text-anchor:middle;dominant-baseline:central;transition:all .25s}
-#cof-svg .cof-minor.active{fill:var(--grn-l)}
-#cof-svg .cof-minor.in-scale{fill:var(--txt2)}
-#cof-svg .cof-minor.masked{fill:var(--txt3);opacity:.4}
-#cof-svg .cof-rn{fill:var(--txt3);font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central;transition:all .25s}
-#cof-svg .cof-rn.active{fill:var(--grn);font-weight:600}
-#cof-svg .cof-rn.in-scale{fill:var(--txt2);font-weight:500}
-#cof-svg .cof-ring{fill:none;stroke:var(--border);stroke-width:1}
+#cof-svg text{font-family:'SF Pro Display',-apple-system,sans-serif;pointer-events:none;text-anchor:middle;dominant-baseline:central;transition:all .25s}
+#cof-svg .cof-seg{transition:fill .25s;cursor:pointer}
+#cof-svg .cof-seg-major{fill:color-mix(in srgb,var(--bg) 40%,var(--card))}
+#cof-svg .cof-seg-minor{fill:color-mix(in srgb,var(--bg) 22%,var(--card))}
+#cof-svg .cof-seg-major.in-scale{fill:color-mix(in srgb,var(--hl) 58%,transparent)}
+#cof-svg .cof-seg-minor.in-scale{fill:color-mix(in srgb,var(--hl) 28%,transparent)}
+#cof-svg .cof-seg-major.active{fill:var(--hl-deep)}
+#cof-svg .cof-seg-minor.active{fill:color-mix(in srgb,var(--hl-deep) 34%,transparent)}
+#cof-svg .cof-seg-major:hover:not(.active){fill:color-mix(in srgb,var(--acc) 16%,transparent)}
+#cof-svg .cof-seg-minor:hover:not(.active){fill:color-mix(in srgb,var(--acc) 10%,transparent)}
+#cof-svg .cof-key{font-size:12.5px;fill:var(--txt3)}
+#cof-svg .cof-key.in-scale{font-size:15px;fill:var(--txt);font-weight:500}
+#cof-svg .cof-key.active{font-size:17px;fill:#fff;font-weight:700}
+#cof-svg .cof-minor{font-size:9px;fill:var(--txt3)}
+#cof-svg .cof-minor.in-scale{font-size:10.5px;fill:var(--txt2)}
+#cof-svg .cof-minor.active{font-size:10.5px;fill:var(--txt2);font-weight:600}
+#cof-svg .cof-rn{font-size:10.5px;fill:var(--txt2);font-weight:600}
+#cof-svg .cof-rn.active{fill:rgba(255,255,255,.9)}
+#cof-svg .cof-center-key{font-size:30px;fill:var(--acc);font-weight:700}
+#cof-svg .cof-center-scale{font-size:10.5px;fill:var(--txt2);letter-spacing:1px}
 /* ---- Scale ref piano ---- */
 #scale-ref{display:flex;justify-content:center;overflow:hidden}
 /* ---- Diatonic chord reference: bigger, readable ---- */
 #chord-ref{display:flex;flex-direction:column;gap:6px}
 .chord-ref-row{display:flex;align-items:center;gap:8px}
 .chord-ref-label{font-size:.8rem;color:var(--txt2);font-family:Georgia,'Times New Roman',serif;white-space:nowrap;width:64px;text-align:right;flex-shrink:0}
-.chord-ref-label.active{color:var(--grn);font-weight:600}
+.chord-ref-label.active{color:var(--acc);font-weight:600}
 .chord-ref-piano-wrap{transform:scale(.62);transform-origin:top left;width:134px;height:56px}
 /* ---- Toggle switch (shared) ---- */
 .tog-row{display:flex;align-items:center;gap:6px;justify-content:center}
 .tog-label{font-size:.7rem;color:var(--txt3);user-select:none}
 .tog{position:relative;width:28px;height:16px;background:var(--border);border-radius:8px;cursor:pointer;transition:background .2s;flex-shrink:0}
-.tog.on{background:var(--grn)}
+.tog.on{background:var(--acc)}
 .tog::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;background:#fff;border-radius:50%;transition:left .2s}
 .tog.on::after{left:14px}
 /* ---- Feedback toggles + screen flash ---- */
 #flash-overlay{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:98}
-#flash-overlay.green{background:var(--grn-l)}
+/* Correct/wrong flash colors are fixed across themes: green = right, red = wrong */
+#flash-overlay.green{background:#8BAF92}
 #flash-overlay.red{background:#C46A66}
 #flash-overlay.flash{animation:flash-fade .9s ease-out}
 @keyframes flash-fade{0%{opacity:.30}20%{opacity:.30}100%{opacity:0}}
 /* ---- Toast notification ---- */
-#toast{position:fixed;top:32px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:100;box-shadow:0 4px 16px rgba(101,138,110,.3)}
+#toast{position:fixed;top:32px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .3s;z-index:100;box-shadow:0 4px 16px color-mix(in srgb,var(--acc) 30%,transparent)}
 #toast.show{opacity:1}
 /* ---- Responsive ---- */
 @media(max-width:1200px){

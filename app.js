@@ -204,6 +204,7 @@ const S = {
   flashFB:       true,        // screen flash feedback on/off
   wrongActive:   false,       // currently holding a "wrong" set (prevents repeat triggers)
   graceUntilEmpty: false,     // suppress wrong-detection until all keys released (stage/question switch)
+  cofKeyNames:   [],          // per-CoF-position display spelling (context respelling)
   distMode:      'jazz',      // key into DIST_PROFILES (degree / secondary-target distribution)
   uiContent:     'degrees',   // Practice content: 'degrees' | '251' | 'secondary'
   uiOrder:       'random',    // Degrees sub-choice: 'random' | 'sequential' (remembered across switches)
@@ -763,6 +764,31 @@ function populateSelectors() {
   });
 }
 
+// ======================== THEME PICKER ========================
+const THEMES = ['sage', 'lavender', 'sky']; // 'sage' = base palette, no data attribute
+
+function applyTheme(name) {
+  if (name === 'sage') delete document.body.dataset.theme;
+  else document.body.dataset.theme = name;
+  document.querySelectorAll('.theme-dot').forEach(d =>
+    d.classList.toggle('active', d.dataset.theme === name));
+}
+
+function initThemePicker() {
+  let theme = 'sage';
+  try {
+    const saved = localStorage.getItem('ct-theme');
+    if (THEMES.includes(saved)) theme = saved;
+  } catch (e) { /* ignore */ }
+  applyTheme(theme);
+  document.querySelectorAll('.theme-dot').forEach(d => {
+    d.addEventListener('click', () => {
+      applyTheme(d.dataset.theme);
+      try { localStorage.setItem('ct-theme', d.dataset.theme); } catch (e) { /* ignore */ }
+    });
+  });
+}
+
 function initDistSelect() {
   const distSel = document.getElementById('dist-select');
   try {
@@ -1072,33 +1098,49 @@ function renderVoicingPianos() {
 const COF_MAJOR = ['C','G','D','A','E','B','Gb','Db','Ab','Eb','Bb','F'];
 const COF_MINOR = ['Am','Em','Bm','F♯m','C♯m','G♯m','E♭m','B♭m','Fm','Cm','Gm','Dm'];
 const COF_CX = 180, COF_CY = 180;
-// Radii: rings, wedge extent, and text placement for each layer
+const COF_GAP = 2.6 * Math.PI / 180; // half-gap between segments, per side
+// Segmented-donut radii: outer band = major keys, inner band = relative minors,
+// center hole shows the current key + scale.
 const COF_R = {
-  wedge: 158,      // wedge sector outer edge
-  rOuter: 148,     // outer ring line
-  rMid: 100,       // middle ring line (same ~48px band as outer)
-  rInner: 52,      // inner ring line (same ~48px band as middle)
-  rnOuter: 162,    // outer Roman numeral (outside outer ring)
-  key: 126,        // note name (between outer and mid ring)
-  minor: 76,       // relative minor name (between mid and inner ring)
+  majOut: 150, majIn: 103,   // major band
+  minOut: 97,  minIn: 69,    // minor band
+  keyText: 126.5,            // major key label
+  minText: 83,               // relative minor label
 };
 
-/** SVG arc sector path from center, spanning startAngle→endAngle at given radius. */
-function wedgePath(r, a1, a2) {
-  const x1 = COF_CX + r * Math.cos(a1), y1 = COF_CY + r * Math.sin(a1);
-  const x2 = COF_CX + r * Math.cos(a2), y2 = COF_CY + r * Math.sin(a2);
-  return 'M ' + COF_CX + ' ' + COF_CY + ' L ' + x1 + ' ' + y1 +
-    ' A ' + r + ' ' + r + ' 0 0 1 ' + x2 + ' ' + y2 + ' Z';
+function cofPoint(r, a) {
+  return [COF_CX + r * Math.cos(a), COF_CY + r * Math.sin(a)];
 }
 
-function cofText(ns, svg, r, angle, cls, cofIdx) {
+/** Annular (donut) segment path between radii r1<r2 from angle a1 to a2. */
+function annularPath(r1, r2, a1, a2) {
+  const [x1, y1] = cofPoint(r2, a1), [x2, y2] = cofPoint(r2, a2);
+  const [x3, y3] = cofPoint(r1, a2), [x4, y4] = cofPoint(r1, a1);
+  return 'M ' + x1 + ' ' + y1 + ' A ' + r2 + ' ' + r2 + ' 0 0 1 ' + x2 + ' ' + y2 +
+    ' L ' + x3 + ' ' + y3 + ' A ' + r1 + ' ' + r1 + ' 0 0 0 ' + x4 + ' ' + y4 + ' Z';
+}
+
+function cofText(ns, svg, cls, cofIdx, x, y) {
   const t = document.createElementNS(ns, 'text');
-  t.setAttribute('x', COF_CX + r * Math.cos(angle));
-  t.setAttribute('y', COF_CY + r * Math.sin(angle));
+  t.setAttribute('x', x);
+  t.setAttribute('y', y);
   t.setAttribute('class', cls);
-  t.setAttribute('data-cof', cofIdx);
+  if (cofIdx != null) t.setAttribute('data-cof', cofIdx);
   svg.appendChild(t);
   return t;
+}
+
+/** Click handler for CoF segments: switch the practice key, using the spelling
+ *  currently shown on that segment (context respelling — see updateCircleOfFifths).
+ *  Falls back to the conventional circle name if the respelled note isn't a
+ *  selectable root (e.g. A♯ is not in ROOTS, so B major's vii falls back to Bb). */
+function selectCofKey(idx) {
+  const sel = document.getElementById('key-select');
+  const shown = (S.cofKeyNames && S.cofKeyNames[idx]) || COF_MAJOR[idx];
+  const name = ROOTS.includes(shown) ? shown : COF_MAJOR[idx];
+  if (sel.value === name) return;
+  sel.value = name;
+  sel.dispatchEvent(new Event('change'));
 }
 
 function buildCircleOfFifths() {
@@ -1106,35 +1148,45 @@ function buildCircleOfFifths() {
   const ns = 'http://www.w3.org/2000/svg';
   const R = COF_R;
 
-  // Ring lines
-  [R.rOuter, R.rMid, R.rInner].forEach(r => {
-    const ring = document.createElementNS(ns, 'circle');
-    ring.setAttribute('cx', COF_CX); ring.setAttribute('cy', COF_CY);
-    ring.setAttribute('r', r); ring.setAttribute('class', 'cof-ring');
-    svg.appendChild(ring);
-  });
-
   for (let i = 0; i < 12; i++) {
-    const angle = (i * 30 - 90) * Math.PI / 180;
-    const a1 = ((i - 0.5) * 30 - 90) * Math.PI / 180;
-    const a2 = ((i + 0.5) * 30 - 90) * Math.PI / 180;
+    const mid = (i * 30 - 90) * Math.PI / 180;
+    const a1 = ((i - 0.5) * 30 - 90) * Math.PI / 180 + COF_GAP;
+    const a2 = ((i + 0.5) * 30 - 90) * Math.PI / 180 - COF_GAP;
 
-    // Background wedge sector
-    const wedge = document.createElementNS(ns, 'path');
-    wedge.setAttribute('d', wedgePath(R.wedge, a1, a2));
-    wedge.setAttribute('class', 'cof-wedge');
-    wedge.setAttribute('data-cof', i);
-    svg.appendChild(wedge);
+    // Major-band segment — clickable: switches practice key
+    const maj = document.createElementNS(ns, 'path');
+    maj.setAttribute('d', annularPath(R.majIn, R.majOut, a1, a2));
+    maj.setAttribute('class', 'cof-seg cof-seg-major');
+    maj.setAttribute('data-cof', i);
+    const tip = document.createElementNS(ns, 'title');
+    tip.textContent = 'Practice in ' + displayNote(COF_MAJOR[i]);
+    maj.appendChild(tip);
+    maj.addEventListener('click', () => selectCofKey(i));
+    svg.appendChild(maj);
 
-    // Outer Roman numeral (dynamic, outside outer ring)
-    cofText(ns, svg, R.rnOuter, angle, 'cof-rn cof-rn-out', i);
+    // Minor-band segment (also clickable — same key)
+    const min = document.createElementNS(ns, 'path');
+    min.setAttribute('d', annularPath(R.minIn, R.minOut, a1, a2));
+    min.setAttribute('class', 'cof-seg cof-seg-minor');
+    min.setAttribute('data-cof', i);
+    min.addEventListener('click', () => selectCofKey(i));
+    svg.appendChild(min);
 
-    // Note name (static)
-    cofText(ns, svg, R.key, angle, 'cof-key', i).textContent = displayNote(COF_MAJOR[i]);
+    // Major key label + Roman numeral below it (numeral filled dynamically)
+    const [kx, ky] = cofPoint(R.keyText, mid);
+    const key = cofText(ns, svg, 'cof-key', i, kx, ky);
+    key.textContent = displayNote(COF_MAJOR[i]);
+    key.dataset.baseY = ky;
+    cofText(ns, svg, 'cof-rn', i, kx, ky + 11);
 
-    // Relative minor name (static)
-    cofText(ns, svg, R.minor, angle, 'cof-minor', i).textContent = COF_MINOR[i];
+    // Relative minor label
+    const [mx, my] = cofPoint(R.minText, mid);
+    cofText(ns, svg, 'cof-minor', i, mx, my).textContent = COF_MINOR[i];
   }
+
+  // Center hole: current key + scale name
+  cofText(ns, svg, 'cof-center-key', null, COF_CX, COF_CY - 9).id = 'cof-center-key';
+  cofText(ns, svg, 'cof-center-scale', null, COF_CX, COF_CY + 17).id = 'cof-center-scale';
 }
 
 function updateCircleOfFifths() {
@@ -1170,17 +1222,32 @@ function updateCircleOfFifths() {
     return 'masked';
   };
 
-  // Apply wedge / note-name / minor-name classes
-  ['cof-wedge', 'cof-key', 'cof-minor'].forEach(sel => {
+  // Context respelling: in-scale positions take the CURRENT scale's spelling
+  // (G major's vii position reads F♯, not the circle-conventional G♭; A harmonic
+  // minor's ♭6 position reads G♯, not A♭). Out-of-scale positions keep the
+  // conventional fixed names.
+  const pcSpelling = {};
+  if (q) q.scalePcs.forEach((pc, i) => { pcSpelling[pc] = q.scaleNotes[i]; });
+  S.cofKeyNames = [];
+  for (let idx = 0; idx < 12; idx++) {
+    const cls = classify(idx);
+    S.cofKeyNames[idx] =
+      (cls !== 'masked' && pcSpelling[cofPcs[idx]]) ? pcSpelling[cofPcs[idx]] : COF_MAJOR[idx];
+  }
+
+  // Apply segment classes + refresh click tooltips with the shown spelling
+  ['cof-seg-major', 'cof-seg-minor'].forEach(sel => {
     document.querySelectorAll('#cof-svg .' + sel).forEach(el => {
-      const cls = classify(parseInt(el.dataset.cof));
+      const idx = parseInt(el.dataset.cof);
       el.classList.remove(...CLS3);
-      el.classList.add(cls);
+      el.classList.add(classify(idx));
+      const tip = el.querySelector('title');
+      if (tip) tip.textContent = 'Practice in ' + displayNote(S.cofKeyNames[idx]);
     });
   });
 
-  // Outer Roman numeral: degree of the major key at this CoF position
-  document.querySelectorAll('#cof-svg .cof-rn-out').forEach(el => {
+  // Roman numeral inside the major segment; key label nudges up to make room
+  document.querySelectorAll('#cof-svg .cof-rn').forEach(el => {
     const idx = parseInt(el.dataset.cof);
     const cls = classify(idx);
     el.classList.remove(...CLS3);
@@ -1188,7 +1255,36 @@ function updateCircleOfFifths() {
     const majorPc = cofPcs[idx];
     el.textContent = (cls !== 'masked' && pcRoman[majorPc]) ? pcRoman[majorPc] : '';
   });
+  document.querySelectorAll('#cof-svg .cof-key').forEach(el => {
+    const idx = parseInt(el.dataset.cof);
+    const cls = classify(idx);
+    el.classList.remove(...CLS3);
+    el.classList.add(cls);
+    el.textContent = displayNote(S.cofKeyNames[idx]);
+    const hasRn = cls !== 'masked' && pcRoman[cofPcs[idx]];
+    el.setAttribute('y', parseFloat(el.dataset.baseY) + (hasRn ? -7 : 0));
+  });
 
+  // Relative minor labels follow the (possibly respelled) major name:
+  // minor root = major root's 6th degree (letter + 5), 3 semitones down.
+  document.querySelectorAll('#cof-svg .cof-minor').forEach(el => {
+    const idx = parseInt(el.dataset.cof);
+    const cls = classify(idx);
+    el.classList.remove(...CLS3);
+    el.classList.add(cls);
+    let name = COF_MINOR[idx];
+    if (cls !== 'masked' && pcSpelling[cofPcs[idx]]) {
+      const majName = pcSpelling[cofPcs[idx]];
+      const letter = LETTERS[(LETTERS.indexOf(majName[0]) + 5) % 7];
+      name = displayNote(pcToNoteName((cofPcs[idx] + 9) % 12, letter)) + 'm';
+    }
+    el.textContent = name;
+  });
+
+  // Center hole: current key + scale
+  document.getElementById('cof-center-key').textContent = displayNote(curKey);
+  document.getElementById('cof-center-scale').textContent =
+    q ? q.scaleName.replace(' (Ionian)', '') : '';
 }
 
 // ======================== SCALE REFERENCE (Mini Piano) ========================
@@ -1482,6 +1578,7 @@ function init() {
   initScaleRefToggle();
   initFeedbackToggles();
   initDistSelect();
+  initThemePicker();
   updateModeBarUI();
   setupEvents();
   initMidi();
