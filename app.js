@@ -145,6 +145,41 @@ function displayNote(name) {
   return name[0] + name.slice(1).replace(/#/g,'\u266f').replace(/b/g,'\u266d');
 }
 
+// ======================== RANDOM DISTRIBUTION PROFILES ========================
+/**
+ * Degree-weight profiles for Random mode. For each profile, weights are looked
+ * up by scale name; each entry is 7 relative weights for degrees 1-7.
+ * A missing scale (or weights:null) falls back to uniform random.
+ *
+ * 'jazz' rationale: in jazz corpora the ii-V-I schema dominates, so ii/V/I get
+ * roughly equal top weight; vii is rare as an independent chord. The minor
+ * scales mirror this via the iiø-V-i schema. Modal scales (Dorian etc.) have
+ * no defensible per-degree statistics, so they intentionally stay uniform.
+ * Add new profiles here — the dropdown is populated from this object.
+ */
+const DIST_PROFILES = {
+  jazz: {
+    label: 'Jazz-weighted (ii‑V‑I heavy)',
+    weights: {
+      'Major (Ionian)': [22, 20, 7, 12, 22, 12, 5],
+      'Harmonic Minor': [24, 20, 5, 12, 24, 10, 5],
+      'Melodic Minor':  [24, 16, 6, 14, 20, 10, 10],
+    }
+  },
+  uniform: { label: 'Equal (1–7 alike)', weights: null },
+};
+
+/** Weighted sample from parallel arrays of items and weights. */
+function weightedPick(items, weights) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r < 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
 // ======================== STATE ========================
 const KEY_CIRCLE_4THS = ['C','F','Bb','Eb','Ab','Db','Gb','B','E','A','D','G'];
 const PROG_251 = [1, 4, 0];
@@ -165,7 +200,127 @@ const S = {
   voicingHL:     true,        // voicing guide highlight on/off
   scaleRefHL:    true,        // scale reference highlight on/off
   cachedVoicings: [],         // voicing data for current question
+  soundFB:       true,        // sound feedback (chime/buzz) on/off
+  flashFB:       true,        // screen flash feedback on/off
+  wrongActive:   false,       // currently holding a "wrong" set (prevents repeat triggers)
+  graceUntilEmpty: false,     // suppress wrong-detection until all keys released (stage/question switch)
+  distMode:      'jazz',      // key into DIST_PROFILES (degree / secondary-target distribution)
+  uiContent:     'degrees',   // Practice content: 'degrees' | '251' | 'secondary'
+  uiOrder:       'random',    // Degrees sub-choice: 'random' | 'sequential' (remembered across switches)
+  uiKeys:        'one',       // ii-V-I sub-choice: 'one' | 'all' (remembered across switches)
 };
+
+// ======================== FEEDBACK (sound + screen flash) ========================
+let _audioCtx = null;
+
+/** Lazily create (and resume) the shared AudioContext (Web Audio API).
+ *  Browsers require a user gesture before audio can play — see initFeedbackToggles. */
+function getAudioCtx() {
+  if (!_audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    _audioCtx = new AC();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+/** Schedule one tone routed through a low-pass filter (BiquadFilterNode)
+ *  for a warm, muted timbre — soft attack, long exponential decay. */
+function playTone(freq, startDelay, dur, type, peak, cutoff) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + startDelay;
+  const osc = ctx.createOscillator();
+  const filt = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  if (ctx.state !== 'running') return; // not unlocked yet — skip rather than queue a burst
+  osc.type = type;
+  osc.frequency.value = freq;
+  filt.type = 'lowpass';
+  filt.frequency.setValueAtTime(cutoff || 1100, t0);
+  filt.frequency.exponentialRampToValueAtTime(Math.max(300, (cutoff || 1100) * 0.4), t0 + dur); // darken as it decays
+  filt.Q.value = 0.5;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.025);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(filt);
+  filt.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+/** Warm two-note chime (E5 → A5), marimba-like: filtered triangle
+ *  with a quiet sine an octave below for body. */
+function playCorrectSound() {
+  playTone(659.3, 0,    0.38, 'triangle', 0.11, 1000); // E5
+  playTone(329.6, 0,    0.38, 'sine',     0.05, 800);  // E4 underlay
+  playTone(880,   0.11, 0.5,  'triangle', 0.10, 900);  // A5
+  playTone(440,   0.11, 0.5,  'sine',     0.05, 800);  // A4 underlay
+}
+
+/** Muted low thud for a wrong note — filtered, no harsh buzz. */
+function playWrongSound() {
+  playTone(130.8, 0, 0.28, 'triangle', 0.16, 450); // C3
+  playTone(98,    0, 0.32, 'sine',     0.12, 350); // G2 underlay
+}
+
+/** Full-screen flash: color is 'green' or 'red'. */
+function flashScreen(color) {
+  const el = document.getElementById('flash-overlay');
+  el.classList.remove('flash', 'green', 'red');
+  void el.offsetWidth; // force reflow so the CSS animation can restart
+  el.classList.add('flash', color);
+}
+
+function feedbackCorrect() {
+  if (S.soundFB) playCorrectSound();
+  if (S.flashFB) flashScreen('green');
+}
+
+function feedbackWrong() {
+  if (S.soundFB) playWrongSound();
+  if (S.flashFB) flashScreen('red');
+}
+
+function saveFeedbackPrefs() {
+  try {
+    localStorage.setItem('ct-feedback', JSON.stringify({ sound: S.soundFB, flash: S.flashFB }));
+  } catch (e) { /* private mode etc. — non-fatal */ }
+}
+
+function initFeedbackToggles() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('ct-feedback') || '{}');
+    if (typeof saved.sound === 'boolean') S.soundFB = saved.sound;
+    if (typeof saved.flash === 'boolean') S.flashFB = saved.flash;
+  } catch (e) { /* ignore corrupt prefs */ }
+
+  const st = document.getElementById('sound-toggle');
+  const ft = document.getElementById('flash-toggle');
+  st.classList.toggle('on', S.soundFB);
+  ft.classList.toggle('on', S.flashFB);
+
+  st.addEventListener('click', () => {
+    S.soundFB = !S.soundFB;
+    st.classList.toggle('on', S.soundFB);
+    saveFeedbackPrefs();
+    if (S.soundFB) playCorrectSound(); // preview — also unlocks the AudioContext
+  });
+  ft.addEventListener('click', () => {
+    S.flashFB = !S.flashFB;
+    ft.classList.toggle('on', S.flashFB);
+    saveFeedbackPrefs();
+    if (S.flashFB) flashScreen('green'); // preview
+  });
+
+  // Unlock audio on the first user gesture anywhere on the page,
+  // so the chime works even if the user only ever plays MIDI keys afterwards.
+  const unlock = () => { getAudioCtx(); };
+  document.addEventListener('pointerdown', unlock, { once: true });
+  document.addEventListener('keydown', unlock, { once: true });
+}
 
 // ======================== MIDI ========================
 async function initMidi() {
@@ -246,9 +401,13 @@ function pickDegree() {
     S.modeIndex++;
     return d;
   }
-  // Random: avoid repeats
+  // Random: avoid immediate repeats, then sample by the active distribution
   const candidates = [0,1,2,3,4,5,6].filter(d => d !== S.lastDegree);
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  const profile = DIST_PROFILES[S.distMode];
+  const table = profile && profile.weights;
+  const w = table && table[document.getElementById('scale-select').value];
+  if (!w) return candidates[Math.floor(Math.random() * candidates.length)]; // uniform fallback
+  return weightedPick(candidates, candidates.map(d => w[d]));
 }
 
 /**
@@ -329,9 +488,20 @@ function activeSecondaryChord(q) {
   return q.secondaryStage === 'target' ? q.targetQ : q.dominantQ;
 }
 
+/**
+ * Pick which degree gets tonicized in Secondary V mode.
+ * Reuses the active distribution profile's Major weights, renormalized over
+ * the allowed targets (I–vi): chords that appear more often also get
+ * tonicized more often (first-order approximation).
+ */
 function pickSecondaryTargetDegree() {
   const candidates = SECONDARY_TARGETS.filter(d => d !== S.lastDegree);
-  const degree = candidates[Math.floor(Math.random() * candidates.length)];
+  const profile = DIST_PROFILES[S.distMode];
+  const table = profile && profile.weights;
+  const w = table && table['Major (Ionian)']; // Secondary V always runs in Major
+  const degree = w
+    ? weightedPick(candidates, candidates.map(d => w[d]))
+    : candidates[Math.floor(Math.random() * candidates.length)];
   S.lastDegree = degree;
   return degree;
 }
@@ -458,7 +628,12 @@ function checkAnswer() {
     if (!S.currentQ || S.currentQ.answered) return;
     for (const validSet of S.currentQ.validSets) {
       if (setsEqual(S.heldPcs, validSet)) {
+        S.wrongActive = false;
         if (S.currentQ.secondary && S.currentQ.secondaryStage === 'dominant') {
+          feedbackCorrect();
+          // The player is still holding the dominant chord, whose notes are not
+          // part of the target chord — don't judge "wrong" while they let go.
+          S.graceUntilEmpty = true;
           S.currentQ.secondaryStage = 'target';
           const targetQ = S.currentQ.targetQ;
           S.currentQ.chordNotes = targetQ.chordNotes;
@@ -474,11 +649,32 @@ function checkAnswer() {
         }
         S.currentQ.answered = true;
         S.practiceCount++;
+        feedbackCorrect();
         document.getElementById('score').textContent = 'Practiced: ' + S.practiceCount;
         document.getElementById('roman-numeral').classList.add('correct');
         // pendingQ is already pre-built; no need to rebuild or update preview
         return;
       }
+    }
+    // Grace period: after a stage/question switch with keys still held,
+    // leftover notes from the previous chord must not count as "wrong".
+    // Lifts once the hand fully clears.
+    if (S.graceUntilEmpty) {
+      if (S.heldPcs.size === 0) S.graceUntilEmpty = false;
+      return;
+    }
+    // No exact match — judge "wrong" as soon as any held note falls outside
+    // EVERY valid answer, i.e. the held notes are no longer a partial build
+    // of any valid set. Fires once per offence; resets when the hand returns
+    // to a buildable subset (or all keys are released).
+    const partialOfSome = S.currentQ.validSets.some(vs => {
+      for (const pc of S.heldPcs) if (!vs.has(pc)) return false;
+      return true;
+    });
+    if (S.heldPcs.size > 0 && !partialOfSome) {
+      if (!S.wrongActive) { S.wrongActive = true; feedbackWrong(); }
+    } else {
+      S.wrongActive = false;
     }
   }, 40);
 }
@@ -559,6 +755,28 @@ function populateSelectors() {
     opt.value = s; opt.textContent = s;
     scaleSel.appendChild(opt);
   });
+  const distSel = document.getElementById('dist-select');
+  Object.keys(DIST_PROFILES).forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = DIST_PROFILES[k].label;
+    distSel.appendChild(opt);
+  });
+}
+
+function initDistSelect() {
+  const distSel = document.getElementById('dist-select');
+  try {
+    const saved = localStorage.getItem('ct-dist');
+    if (saved && DIST_PROFILES[saved]) S.distMode = saved;
+  } catch (e) { /* ignore */ }
+  distSel.value = S.distMode;
+  distSel.addEventListener('change', () => {
+    S.distMode = distSel.value;
+    try { localStorage.setItem('ct-dist', S.distMode); } catch (e) { /* ignore */ }
+    // Current question stays; rebuild only the queued one under the new distribution
+    S.pendingQ = buildQuestion();
+    showPendingPreview();
+  });
 }
 
 function renderQuestion() {
@@ -578,6 +796,11 @@ function renderQuestion() {
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
   S.showingAnswer = false;
+  S.wrongActive = false;
+  // A pending debounce from the previous question must not judge this one,
+  // and notes still held from the previous chord get a grace period.
+  if (S.checkTimer) { clearTimeout(S.checkTimer); S.checkTimer = null; }
+  S.graceUntilEmpty = S.heldPcs.size > 0;
 
   renderVoicingGuide();
   updateCircleOfFifths();
@@ -1147,7 +1370,35 @@ function enforceModeConstraints(mode) {
   }
 }
 
-function setMode(mode) {
+/** Map the two-level UI state (content + sub-choice) onto the internal mode id. */
+function currentUiMode() {
+  if (S.uiContent === 'degrees') return S.uiOrder === 'sequential' ? 'sequential' : 'random';
+  if (S.uiContent === '251') return S.uiKeys === 'all' ? '251-all' : '251';
+  return 'secondary';
+}
+
+/** Sync mode-bar buttons, contextual sub-controls, and the scale lock. */
+function updateModeBarUI() {
+  document.querySelectorAll('.content-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.content === S.uiContent));
+  document.querySelectorAll('#sub-degrees .sub-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.order === S.uiOrder));
+  document.querySelectorAll('#sub-251 .sub-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.keys === S.uiKeys));
+
+  document.getElementById('sub-degrees').style.display = S.uiContent === 'degrees' ? '' : 'none';
+  document.getElementById('sub-251').style.display = S.uiContent === '251' ? '' : 'none';
+  // Mix applies wherever a weighted random pick happens:
+  // Degrees+Random (degree distribution) and Secondary V (tonicization targets)
+  const showMix = (S.uiContent === 'degrees' && S.uiOrder === 'random') || S.uiContent === 'secondary';
+  document.getElementById('sub-mix').style.display = showMix ? '' : 'none';
+
+  // ii-V-I and Secondary V are Major-only — lock the scale selector there
+  document.getElementById('scale-select').disabled = S.uiContent !== 'degrees';
+}
+
+function applyUiMode() {
+  const mode = currentUiMode();
   S.pendingQ = null;  // discard stale pre-built question
   // These modes only apply cleanly to Major — auto-switch scale if needed.
   enforceModeConstraints(mode);
@@ -1158,8 +1409,7 @@ function setMode(mode) {
     const idx = KEY_CIRCLE_4THS.indexOf(curKey);
     S.keyCircleIdx = idx >= 0 ? idx : 0;
   }
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.mode-btn[data-mode="' + mode + '"]').classList.add('active');
+  updateModeBarUI();
   nextQuestion();
 }
 
@@ -1189,9 +1439,15 @@ function setupEvents() {
     });
   });
 
-  // Mode buttons
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  // Practice content + contextual sub-choice buttons
+  document.querySelectorAll('.content-btn').forEach(btn => {
+    btn.addEventListener('click', () => { S.uiContent = btn.dataset.content; applyUiMode(); });
+  });
+  document.querySelectorAll('#sub-degrees .sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => { S.uiOrder = btn.dataset.order; applyUiMode(); });
+  });
+  document.querySelectorAll('#sub-251 .sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => { S.uiKeys = btn.dataset.keys; applyUiMode(); });
   });
 
   // Key / scale change
@@ -1224,6 +1480,9 @@ function init() {
   populateSelectors();
   buildCircleOfFifths();
   initScaleRefToggle();
+  initFeedbackToggles();
+  initDistSelect();
+  updateModeBarUI();
   setupEvents();
   initMidi();
   nextQuestion();

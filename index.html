@@ -8,6 +8,7 @@
 </head>
 <body>
 <div id="toast"></div>
+<div id="flash-overlay"></div>
 <div id="app">
   <header>
     <h1>Jazz Scale Chord Trainer</h1>
@@ -15,7 +16,8 @@
   </header>
 
   <div id="controls-row">
-    <section id="settings">
+    <section id="settings" class="ctrl-group">
+      <span class="ctrl-caption">Key / Scale / Chord</span>
       <div class="setting-group">
         <label>Key</label>
         <select id="key-select"></select>
@@ -32,40 +34,52 @@
         </div>
       </div>
     </section>
-    <div class="ctrl-sep"></div>
-    <div id="mode-bar">
-      <label>Mode</label>
-      <button class="mode-btn active" data-mode="random">Random</button>
-      <button class="mode-btn" data-mode="sequential">1 → 7</button>
-      <button class="mode-btn" data-mode="251">ii-V-I</button>
-      <button class="mode-btn" data-mode="251-all">ii-V-I All Keys</button>
-      <button class="mode-btn" data-mode="secondary">V of Target</button>
+    <div id="mode-bar" class="ctrl-group">
+      <span class="ctrl-caption">Practice</span>
+      <button class="content-btn active" data-content="degrees">Degrees</button>
+      <button class="content-btn" data-content="251">ii-V-I</button>
+      <button class="content-btn" data-content="secondary">Secondary V</button>
+      <div class="ctrl-sub" id="sub-degrees">
+        <span class="tog-label">Order</span>
+        <button class="sub-btn active" data-order="random">Random</button>
+        <button class="sub-btn" data-order="sequential">1 → 7</button>
+      </div>
+      <div class="ctrl-sub" id="sub-251">
+        <span class="tog-label">Keys</span>
+        <button class="sub-btn active" data-keys="one">This key</button>
+        <button class="sub-btn" data-keys="all">All keys ↻</button>
+      </div>
+      <div class="ctrl-sub" id="sub-mix">
+        <span class="tog-label" id="dist-label">Mix</span>
+        <select id="dist-select" title="How often each degree (or tonicized target) appears"></select>
+      </div>
+    </div>
+    <div id="feedback-toggles" class="ctrl-group">
+      <span class="ctrl-caption">Feedback</span>
+      <div class="tog-row"><span class="tog-label">Sound</span><div id="sound-toggle" class="tog on"></div></div>
+      <div class="tog-row"><span class="tog-label">Flash</span><div id="flash-toggle" class="tog on"></div></div>
     </div>
   </div>
 
   <div id="main-columns">
-    <!-- LEFT: Scale Ref (top) + Chord Pianos | CoF (bottom row) -->
+    <!-- LEFT: Scale reference + diatonic chords -->
     <div id="col-left">
-      <section id="scale-ref-section">
-        <div id="scale-ref-header">
-          <span class="sr-title">Scale</span>
+      <section id="scale-ref-section" class="card">
+        <div id="scale-ref-header" class="card-head">
+          <span class="card-title">Scale</span>
           <div class="tog-row"><span class="tog-label">Highlight</span><div id="scale-ref-toggle" class="tog on"></div></div>
         </div>
         <div id="scale-ref"></div>
       </section>
-      <div id="left-bottom">
-        <section id="chord-ref-section">
-          <div id="chord-ref"></div>
-        </section>
-        <section id="cof-section">
-          <svg id="cof-svg" width="360" height="360" viewBox="0 0 360 360"></svg>
-        </section>
-      </div>
+      <section id="chord-ref-section" class="card">
+        <div class="card-head"><span class="card-title">Diatonic Chords</span></div>
+        <div id="chord-ref"></div>
+      </section>
     </div>
 
-    <!-- CENTER: Question + Feedback -->
+    <!-- CENTER: Question card + Circle of Fifths -->
     <div id="col-center">
-      <section id="question-area">
+      <section id="question-area" class="card">
         <div id="scale-label"></div>
         <div id="roman-numeral"><span class="rn-numeral" style="color:#ccc">—</span></div>
         <div id="next-preview"></div>
@@ -74,18 +88,22 @@
           <button id="next-btn" onclick="nextQuestion()">Next (Space)</button>
         </div>
         <div id="answer-display"></div>
+        <div id="feedback-area">
+          <div id="feedback"></div>
+          <div id="held-notes"></div>
+          <div id="score"></div>
+        </div>
       </section>
-      <section id="feedback-area">
-        <div id="feedback"></div>
-        <div id="score"></div>
+      <section id="cof-section" class="card">
+        <div class="card-head"><span class="card-title">Circle of Fifths</span></div>
+        <svg id="cof-svg" width="360" height="360" viewBox="0 0 360 360"></svg>
       </section>
-      <div id="held-notes"></div>
     </div>
 
-    <!-- RIGHT: Voicing Guide -->
+    <!-- RIGHT: Voicing guide -->
     <div id="col-right">
-      <section id="voicing-section">
-        <div id="voicing-toggles"></div>
+      <section id="voicing-section" class="card">
+        <div class="card-head"><span class="card-title">Voicings</span><div id="voicing-toggles"></div></div>
         <div id="voicing-pianos"></div>
       </section>
     </div>
