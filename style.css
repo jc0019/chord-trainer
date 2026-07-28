@@ -9,7 +9,8 @@ body{font-family:'SF Pro Display',-apple-system,'Segoe UI',sans-serif;background
 #app{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:18px}
 /* ---- Header ---- */
 header{display:flex;justify-content:space-between;align-items:center;padding:0 2px}
-#header-right{display:flex;align-items:center;gap:16px}
+#header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#input-toggle{display:flex;gap:4px}
 #theme-dots{display:flex;gap:8px;align-items:center}
 .theme-dot{width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid var(--card);box-shadow:0 0 0 1px var(--border);padding:0;transition:box-shadow .2s}
 .theme-dot[data-theme="sage"]{background:#EAD279}
@@ -73,6 +74,15 @@ select:disabled{opacity:.45;cursor:not-allowed}
 /* Fixed two-line budget so line-wrap (long flat-key names) never resizes the card */
 #answer-display{font-size:1rem;color:var(--acc);height:2.9em;overflow:hidden;transition:opacity .3s}
 #scale-label{white-space:nowrap}
+/* ---- Note chips (tap-to-answer input) ---- */
+#chips-area{margin-top:12px}
+#chips-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chip{min-width:46px;min-height:44px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--txt);font-size:.9rem;cursor:pointer;transition:all .15s}
+.chip .enh{display:block;font-size:.7rem;line-height:1.3;pointer-events:none}
+.chip.black{background:#4a4a4a;color:#eee;border-color:#3a3a3a}
+.chip:hover{border-color:var(--acc-l)}
+.chip.on,.chip.black.on{background:var(--hl);border-color:var(--hl-deep);color:#2a2a2a;font-weight:600}
+#chips-hint{margin-top:8px;font-size:.7rem;color:var(--txt3);height:1.2em;line-height:1.2em;overflow:visible}
 /* ---- Live feedback strip (inside question card) ---- */
 #feedback-area{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:1px solid var(--border-l);margin-top:12px;padding-top:10px;min-height:64px}
 #feedback{font-size:.95rem;font-weight:500;transition:opacity .3s}
@@ -161,6 +171,19 @@ select:disabled{opacity:.45;cursor:not-allowed}
 }
 @media(max-width:860px){
   #main-columns{grid-template-columns:1fr}
-  #roman-numeral{font-size:3.5rem;min-height:3.5rem}
+  #roman-numeral{font-size:3.5rem;height:3.5rem}
   body{padding:16px}
+}
+/* Phone: question + chips + Circle of Fifths only — the wide piano reference
+   panels (fixed 378px keyboards) don't fit and are hidden */
+@media(max-width:700px){
+  #col-left,#col-right{display:none}
+  body{padding:10px}
+  #app{gap:12px}
+  #controls-row{gap:8px}
+  .ctrl-group{padding:14px 10px 8px}
+  #question-area{padding:20px 12px 12px}
+  #roman-numeral{font-size:3.2rem;height:3.2rem;margin:10px 0 6px}
+  #next-preview{font-size:1.4rem;height:1.8rem}
+  #action-btns button{min-width:96px}
 }

@@ -209,7 +209,89 @@ const S = {
   uiContent:     'degrees',   // Practice content: 'degrees' | '251' | 'secondary'
   uiOrder:       'random',    // Degrees sub-choice: 'random' | 'sequential' (remembered across switches)
   uiKeys:        'one',       // ii-V-I sub-choice: 'one' | 'all' (remembered across switches)
+  inputMode:     'midi',      // 'midi' | 'chips' (tap note names to answer)
+  inputUserSet:  false,       // user chose input manually — disables auto-switching
 };
+
+// ======================== INPUT MODE (MIDI / note chips) ========================
+function setInputMode(mode) {
+  S.inputMode = mode;
+  document.querySelectorAll('#input-toggle .sub-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.input === mode));
+  const area = document.getElementById('chips-area');
+  if (area) area.style.display = mode === 'chips' ? '' : 'none';
+  // Reset any residue from the other input path
+  S.heldMidiNotes.clear();
+  S.heldPcs = new Set();
+  S.wrongActive = false;
+  S.graceUntilEmpty = false;
+  updateHeldNotesDisplay();
+  renderChips();
+}
+
+function initInputToggle() {
+  document.querySelectorAll('#input-toggle .sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.inputUserSet = true;
+      if (btn.dataset.input === 'midi' &&
+          document.getElementById('midi-status').className !== 'connected') {
+        showToast('No MIDI device detected — connect a keyboard first');
+      }
+      setInputMode(btn.dataset.input);
+    });
+  });
+}
+
+/**
+ * Chip labels are deliberately NEUTRAL: black-key pcs always show BOTH
+ * enharmonic names. Key-aware spelling would leak the answer — in Gb major
+ * a chip spelled C♭ visibly marks itself as in-scale.
+ */
+const CHIP_LABELS = ['C', ['C♯','D♭'], 'D', ['D♯','E♭'], 'E', 'F',
+                     ['F♯','G♭'], 'G', ['G♯','A♭'], 'A', ['A♯','B♭'], 'B'];
+
+function renderChips() {
+  const row = document.getElementById('chips-row');
+  if (!row) return;
+  row.innerHTML = '';
+  for (let pc = 0; pc < 12; pc++) {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (IS_WHITE[pc] ? '' : ' black') + (S.heldPcs.has(pc) ? ' on' : '');
+    const lbl = CHIP_LABELS[pc];
+    if (Array.isArray(lbl)) {
+      lbl.forEach(n => {
+        const line = document.createElement('span');
+        line.className = 'enh';
+        line.textContent = n;
+        btn.appendChild(line);
+      });
+    } else {
+      btn.textContent = lbl;
+    }
+    btn.addEventListener('click', () => toggleChip(pc));
+    row.appendChild(btn);
+  }
+}
+
+function toggleChip(pc) {
+  if (S.inputMode !== 'chips') return;
+  if (S.heldPcs.has(pc)) S.heldPcs.delete(pc); else S.heldPcs.add(pc);
+  renderChips();
+  updateHeldNotesDisplay();
+  checkAnswer();
+}
+
+/** Chips have no "release all keys" moment — clear and advance explicitly. */
+function chipsAdvanceAfterCorrect() {
+  setTimeout(() => {
+    if (!S.currentQ || !S.currentQ.answered || S.inputMode !== 'chips') return;
+    S.heldPcs = new Set();
+    S.currentQ = S.pendingQ;
+    S.pendingQ = buildQuestion();
+    S.showingAnswer = false;
+    renderQuestion();
+  }, 700);
+}
 
 // ======================== FEEDBACK (sound + screen flash) ========================
 let _audioCtx = null;
@@ -327,8 +409,10 @@ function initFeedbackToggles() {
 async function initMidi() {
   const statusEl = document.getElementById('midi-status');
   if (!navigator.requestMIDIAccess) {
-    statusEl.textContent = 'Web MIDI not supported in this browser';
+    statusEl.textContent = 'No MIDI support';
+    statusEl.title = 'This browser lacks Web MIDI — tap-to-answer enabled';
     statusEl.className = 'disconnected';
+    if (!S.inputUserSet) setInputMode('chips');
     return;
   }
   try {
@@ -342,9 +426,19 @@ async function initMidi() {
       if (names.length > 0) {
         statusEl.textContent = '\u25cf ' + names.join(', ');
         statusEl.className = 'connected';
+        // Device (re)appeared \u2014 switch back to playing, unless the user chose otherwise
+        if (!S.inputUserSet && S.inputMode !== 'midi') {
+          setInputMode('midi');
+          showToast('MIDI connected: ' + names.join(', '));
+        }
       } else {
-        statusEl.textContent = 'No MIDI device detected';
+        statusEl.textContent = 'MIDI not connected';
+        statusEl.title = 'Tap-to-answer enabled \u2014 connect a MIDI keyboard to play your answers';
         statusEl.className = 'disconnected';
+        if (!S.inputUserSet && S.inputMode !== 'chips') {
+          setInputMode('chips');
+          showToast('No MIDI keyboard detected \u2014 tap-to-answer enabled. Connect a keyboard anytime.', 3500);
+        }
       }
     }
     bindInputs();
@@ -352,6 +446,7 @@ async function initMidi() {
   } catch (err) {
     statusEl.textContent = 'MIDI error: ' + err.message;
     statusEl.className = 'disconnected';
+    if (!S.inputUserSet) setInputMode('chips');
   }
 }
 
@@ -365,6 +460,7 @@ async function initMidi() {
  * for chord matching — voicing/octave doesn't matter.
  */
 function handleMidiMessage(msg) {
+  if (S.inputMode !== 'midi') return; // chips mode owns S.heldPcs
   const [status, note, velocity] = msg.data;
   const cmd = status & 0xf0; // mask off channel bits to get command
   if (cmd === 0x90 && velocity > 0) {
@@ -634,7 +730,14 @@ function checkAnswer() {
           feedbackCorrect();
           // The player is still holding the dominant chord, whose notes are not
           // part of the target chord — don't judge "wrong" while they let go.
-          S.graceUntilEmpty = true;
+          // In chips mode there is no release: clear the selection instead.
+          if (S.inputMode === 'chips') {
+            S.heldPcs = new Set();
+            renderChips();
+            updateHeldNotesDisplay();
+          } else {
+            S.graceUntilEmpty = true;
+          }
           S.currentQ.secondaryStage = 'target';
           const targetQ = S.currentQ.targetQ;
           S.currentQ.chordNotes = targetQ.chordNotes;
@@ -654,6 +757,7 @@ function checkAnswer() {
         document.getElementById('score').textContent = 'Practiced: ' + S.practiceCount;
         document.getElementById('roman-numeral').classList.add('correct');
         // pendingQ is already pre-built; no need to rebuild or update preview
+        if (S.inputMode === 'chips') chipsAdvanceAfterCorrect();
         return;
       }
     }
@@ -832,6 +936,7 @@ function renderQuestion() {
   updateCircleOfFifths();
   updateScaleRef();
   renderChordRef();
+  renderChips();
 }
 
 function updateHeldNotesDisplay() {
@@ -1666,6 +1771,7 @@ function init() {
   initFeedbackToggles();
   initDistSelect();
   initThemePicker();
+  initInputToggle();
   updateModeBarUI();
   setupEvents();
   initMidi();

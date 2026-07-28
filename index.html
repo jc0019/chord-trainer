@@ -18,7 +18,11 @@
         <button class="theme-dot" data-theme="lavender" title="Lavender"></button>
         <button class="theme-dot" data-theme="sky" title="Sky"></button>
       </div>
-      <div id="midi-status" class="disconnected">No MIDI device</div>
+      <div id="input-toggle">
+        <button class="sub-btn active" data-input="midi" title="Answer by playing your MIDI keyboard">MIDI</button>
+        <button class="sub-btn" data-input="chips" title="Practice without a MIDI keyboard — tap note names to answer">Tap (no MIDI)</button>
+      </div>
+      <div id="midi-status" class="disconnected">MIDI not connected</div>
     </div>
   </header>
 
@@ -96,6 +100,10 @@
           <button id="next-btn" onclick="nextQuestion()">Next (Space)</button>
         </div>
         <div id="answer-display"></div>
+        <div id="chips-area" style="display:none">
+          <div id="chips-row"></div>
+          <div id="chips-hint">Tap the notes of the chord · connect a MIDI keyboard to play your answers instead</div>
+        </div>
         <div id="feedback-area">
           <div id="feedback"></div>
           <div id="held-notes"></div>
