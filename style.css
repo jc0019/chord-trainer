@@ -52,7 +52,7 @@ select:disabled{opacity:.45;cursor:not-allowed}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .card-title{font-size:.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt2);font-weight:500}
 /* ---- 3-column main area ---- */
-#main-columns{display:grid;grid-template-columns:420px minmax(0,1fr) 420px;gap:20px;align-items:start}
+#main-columns{display:grid;grid-template-columns:440px minmax(0,1fr) 420px;gap:20px;align-items:start}
 #col-left,#col-center,#col-right{display:flex;flex-direction:column;gap:18px;min-width:0}
 /* ---- Question card ---- */
 #question-area{text-align:center;padding:28px 24px 16px}
@@ -122,8 +122,14 @@ select:disabled{opacity:.45;cursor:not-allowed}
 #cof-svg .cof-rn.active{fill:rgba(255,255,255,.9)}
 #cof-svg .cof-center-key{font-size:30px;fill:var(--acc);font-weight:700}
 #cof-svg .cof-center-scale{font-size:10.5px;fill:var(--txt2);letter-spacing:1px}
+/* Scale formula (♭/♯ glyphs → pinned height, same fallback-font-metric issue) */
+#scale-formula{font-size:.8rem;color:var(--txt2);letter-spacing:3px;white-space:nowrap;height:1.2em;line-height:1.2em;overflow:visible;flex:1;text-align:center}
 /* ---- Scale ref piano ---- */
-#scale-ref{display:flex;justify-content:center;overflow:hidden}
+#scale-ref{display:flex;justify-content:flex-start;padding-left:26px;overflow:visible}
+/* Fingering rows under the scale keys: circled digits (CSS circles — Unicode
+   circled chars fall back to symbol fonts with unstable metrics) */
+.fing-lbl{position:absolute;width:14px;height:14px;line-height:13px;border:1px solid var(--txt3);border-radius:50%;font-size:.58rem;font-weight:600;color:var(--txt2);text-align:center;pointer-events:none;background:var(--card)}
+.fing-cap{position:absolute;font-size:.56rem;font-weight:600;letter-spacing:.5px;color:var(--txt3);pointer-events:none;line-height:1;text-transform:uppercase}
 /* ---- Diatonic chord reference: bigger, readable ---- */
 #chord-ref{display:flex;flex-direction:column;gap:6px}
 .chord-ref-row{display:flex;align-items:center;gap:8px}

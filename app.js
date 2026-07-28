@@ -1043,7 +1043,18 @@ function buildVoicingCol(label, rawNotes, funcLabels, altIdx) {
   const midi = notesToMidi(rawNotes);
   const disp = rawNotes.map(displayNote);
   const altMidi = (altIdx || []).map(i => midi[i]);
-  renderMiniPiano(piano, midi, disp, funcLabels, S.voicingHL, altMidi);
+
+  // Default window is C3 + 2 octaves; if the voicing's top note overflows it
+  // (e.g. rootless B-forms on high roots: Fm9 B reaches C5), slide the window
+  // up to the lowest note's white key so every note stays visible.
+  let start = MP.start;
+  const hi = Math.max(...midi);
+  if (hi >= MP.start + MP.octs * 12) {
+    start = Math.min(...midi);
+    while (!IS_WHITE[((start % 12) + 12) % 12]) start--; // anchor on a white key
+  }
+
+  renderMiniPiano(piano, midi, disp, funcLabels, S.voicingHL, altMidi, { start });
   col.appendChild(piano);
 
   return col;
@@ -1287,6 +1298,64 @@ function updateCircleOfFifths() {
     q ? q.scaleName.replace(' (Ionian)', '') : '';
 }
 
+// ======================== SCALE FINGERINGS ========================
+/**
+ * Standard one-octave fingerings (8 ascending notes incl. the octave), keyed
+ * by root PITCH CLASS so enharmonic roots (F#/Gb) share an entry.
+ * Each value is [RH, LH] as digit strings. Source: standard charts
+ * (pianoscales.org, ABRSM-style). Harmonic & Melodic Minor reuse the minor
+ * table — conventional charts keep fingering constant across minor forms.
+ * Modes (Dorian/Mixolydian/Lydian) have no standard — intentionally absent.
+ */
+const MINOR_FING = {
+  0:['12312345','54321321'], 1:['34123123','32143213'], 2:['12312345','54321321'],
+  3:['31234123','21432132'], 4:['12312345','54321321'], 5:['12341234','54321321'],
+  6:['23123123','43213214'], 7:['12312345','54321321'], 8:['34123123','32132143'],
+  9:['12312345','54321321'], 10:['21231234','21321432'], 11:['12312345','43214321'],
+};
+const FINGERINGS = {
+  'Major (Ionian)': {
+    0:['12312345','54321321'], 1:['23123412','32143213'], 2:['12312345','54321321'],
+    3:['31234123','32143213'], 4:['12312345','54321321'], 5:['12341234','54321321'],
+    6:['23412312','43213214'], 7:['12312345','54321321'], 8:['34123123','32143213'],
+    9:['12312345','54321321'], 10:['21231234','32143213'], 11:['12312345','43214321'],
+  },
+  'Harmonic Minor': MINOR_FING,
+  'Melodic Minor': MINOR_FING,
+};
+
+/** Horizontal center (px) of the key for a given midi note on the scale-ref piano. */
+function scaleKeyCenterX(midi) {
+  const off = midi - MP.start;
+  const oct = Math.floor(off / 12), within = off % 12;
+  const layout = keyLayout(MP.start % 12);
+  const wIdx = layout.whites.indexOf(within);
+  if (wIdx >= 0) return (oct * 7 + wIdx) * MP.step + MP.ww / 2;
+  const blk = layout.blacks.find(b => b.off === within);
+  return (oct * 7 + blk.after) * MP.step + MP.step;
+}
+
+/** One row of circled fingering digits aligned under the scale keys.
+ *  The RH/LH cap sits in a fixed gutter left of the keyboard. */
+function addFingeringRow(container, midiNotes, digits, cap, top) {
+  const capEl = document.createElement('div');
+  capEl.className = 'fing-cap';
+  // Caps center-align with the WHITE-key circle row (the baseline row)
+  capEl.style.cssText = 'top:' + (top + 8) + 'px;left:-26px';
+  capEl.textContent = cap;
+  container.appendChild(capEl);
+  midiNotes.forEach((m, i) => {
+    const d = document.createElement('div');
+    d.className = 'fing-lbl';
+    // Black-key digits sit a little higher, mirroring the keyboard topology —
+    // also prevents circles from overlapping where key centers are close.
+    const y = top + (IS_WHITE[((m % 12) + 12) % 12] ? 5 : -4);
+    d.style.cssText = 'left:' + (scaleKeyCenterX(m) - 7) + 'px;top:' + y + 'px';
+    d.textContent = digits[i];
+    container.appendChild(d);
+  });
+}
+
 // ======================== SCALE REFERENCE (Mini Piano) ========================
 // Scale ref uses S.scaleRefHL
 
@@ -1325,10 +1394,28 @@ function updateScaleRef() {
   if (octaveMidi < MP.start + MP.octs * 12) scaleMidi.push(octaveMidi);
 
   const dispNames = scaleMidi.map((_, i) => displayNote(q.scaleNotes[i % 7]));
-  const funcLabels = scaleMidi.map((_, i) => String((i % 7) + 1));
+  // Degree labels spelled against the parallel major (Mixolydian: 1..6 ♭7),
+  // octave repeat reads "8". Reuses the Roman-numeral prefix logic.
+  const funcLabels = scaleMidi.map((_, i) =>
+    i === 7 ? '8' : getDegreePrefix(q.scaleIv, i) + (i + 1));
 
   renderMiniPiano(piano, scaleMidi, dispNames, funcLabels, S.scaleRefHL);
+
+  // Fingering rows (RH above LH) under the keys, when a standard table exists
+  const fingTable = FINGERINGS[q.scaleName];
+  const fing = fingTable && fingTable[q.scalePcs[0]];
+  if (fing && scaleMidi.length === 8) {
+    piano.style.height = (MP.wh + 46) + 'px';
+    addFingeringRow(piano, scaleMidi, fing[0], 'RH', MP.wh + 6);
+    addFingeringRow(piano, scaleMidi, fing[1], 'LH', MP.wh + 26);
+  }
   container.appendChild(piano);
+
+  // Scale "fingerprint" in the card header: 1 2 3 4 5 6 ♭7
+  // (null-guarded so a stale cached index.html can't break the render chain)
+  const formulaEl = document.getElementById('scale-formula');
+  if (formulaEl) formulaEl.textContent =
+    q.scaleIv.map((_, i) => getDegreePrefix(q.scaleIv, i) + (i + 1)).join(' ');
 }
 
 // ======================== CHORD REFERENCE ========================
