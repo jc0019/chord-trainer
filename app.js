@@ -209,8 +209,11 @@ const S = {
   uiContent:     'degrees',   // Practice content: 'degrees' | '251' | 'secondary'
   uiOrder:       'random',    // Degrees sub-choice: 'random' | 'sequential' (remembered across switches)
   uiKeys:        'one',       // ii-V-I sub-choice: 'one' | 'all' (remembered across switches)
-  inputMode:     'midi',      // 'midi' | 'chips' (tap note names to answer)
+  inputMode:     'midi',      // 'midi' | 'chips' (tap to answer)
   inputUserSet:  false,       // user chose input manually — disables auto-switching
+  tapRoot:       null,        // tap mode: selected root pc (symbolic channel)
+  tapQual:       null,        // tap mode: selected quality (chordSymbol string)
+  tapJudged:     null,        // last judged root|quality pair (prevents re-flashing)
 };
 
 // ======================== INPUT MODE (MIDI / note chips) ========================
@@ -225,6 +228,7 @@ function setInputMode(mode) {
   S.heldPcs = new Set();
   S.wrongActive = false;
   S.graceUntilEmpty = false;
+  S.tapRoot = null; S.tapQual = null; S.tapJudged = null;
   updateHeldNotesDisplay();
   renderChips();
 }
@@ -243,20 +247,34 @@ function initInputToggle() {
 }
 
 /**
- * Chip labels are deliberately NEUTRAL: black-key pcs always show BOTH
+ * Root labels are deliberately NEUTRAL: black-key pcs always show BOTH
  * enharmonic names. Key-aware spelling would leak the answer — in Gb major
  * a chip spelled C♭ visibly marks itself as in-scale.
  */
 const CHIP_LABELS = ['C', ['C♯','D♭'], 'D', ['D♯','E♭'], 'E', 'F',
                      ['F♯','G♭'], 'G', ['G♯','A♭'], 'A', ['A♯','B♭'], 'B'];
 
+/** Quality options per chord type: [value = chordSymbol, label]. */
+const TAP_QUALS = {
+  triad: [['', 'M'], ['m', 'm'], ['dim', 'dim'], ['aug', 'aug']],
+  '7th': [['Maj7','Maj7'], ['7','7'], ['m7','m7'], ['m(Maj7)','m(Maj7)'],
+          ['ø7','ø7'], ['°7','°7'], ['aug(Maj7)','aug(Maj7)'], ['aug7','aug7']],
+};
+
+/** Render all three tap-mode rows: roots, qualities, one-octave piano. */
 function renderChips() {
-  const row = document.getElementById('chips-row');
+  renderTapRoots();
+  renderTapQuals();
+  renderTapPiano();
+}
+
+function renderTapRoots() {
+  const row = document.getElementById('tap-roots');
   if (!row) return;
   row.innerHTML = '';
   for (let pc = 0; pc < 12; pc++) {
     const btn = document.createElement('button');
-    btn.className = 'chip' + (IS_WHITE[pc] ? '' : ' black') + (S.heldPcs.has(pc) ? ' on' : '');
+    btn.className = 'chip' + (IS_WHITE[pc] ? '' : ' black') + (S.tapRoot === pc ? ' on' : '');
     const lbl = CHIP_LABELS[pc];
     if (Array.isArray(lbl)) {
       lbl.forEach(n => {
@@ -268,15 +286,84 @@ function renderChips() {
     } else {
       btn.textContent = lbl;
     }
-    btn.addEventListener('click', () => toggleChip(pc));
+    btn.addEventListener('click', () => {
+      if (S.inputMode !== 'chips') return;
+      S.tapRoot = S.tapRoot === pc ? null : pc;
+      renderTapRoots();
+      judgeTapChord();
+    });
     row.appendChild(btn);
   }
 }
 
-function toggleChip(pc) {
+function renderTapQuals() {
+  const row = document.getElementById('tap-quals');
+  if (!row) return;
+  row.innerHTML = '';
+  const quals = TAP_QUALS[getChordType()] || TAP_QUALS['7th'];
+  quals.forEach(([value, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'chip qual' + (S.tapQual === value ? ' on' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      if (S.inputMode !== 'chips') return;
+      S.tapQual = S.tapQual === value ? null : value;
+      renderTapQuals();
+      judgeTapChord();
+    });
+    row.appendChild(btn);
+  });
+}
+
+/**
+ * Symbolic answer channel: judged the moment BOTH root and quality are chosen.
+ * A wrong pair flashes once; changing either half forms a new pair and
+ * re-judges. Matching is by root pitch class, so either enharmonic reading
+ * of a root button is accepted.
+ */
+function judgeTapChord() {
+  if (!S.currentQ || S.currentQ.answered || S.inputMode !== 'chips') return;
+  if (S.tapRoot === null || S.tapQual === null) return;
+  const pair = S.tapRoot + '|' + S.tapQual;
+  if (pair === S.tapJudged) return;
+  S.tapJudged = pair;
+  if (S.tapRoot === S.currentQ.chordPcs[0] && S.tapQual === S.currentQ.quality.chordSymbol) {
+    registerCorrect();
+  } else {
+    feedbackWrong();
+  }
+}
+
+/** One-octave tap piano: a pitch-class selector with keyboard topology. */
+function renderTapPiano() {
+  const cont = document.getElementById('tap-piano');
+  if (!cont) return;
+  cont.innerHTML = '';
+  const STEP = 48, WW = 46, WH = 104, BW = 30, BH = 64;
+  cont.style.width = (7 * STEP - 2) + 'px';
+  cont.style.height = WH + 'px';
+  const whites = [0, 2, 4, 5, 7, 9, 11];
+  const blacks = [[1, 0], [3, 1], [6, 3], [8, 4], [10, 5]]; // [pc, after white index]
+  whites.forEach((pc, i) => {
+    const k = document.createElement('div');
+    k.className = 'tpk tpk-w' + (S.heldPcs.has(pc) ? ' on' : '');
+    k.style.cssText = 'left:' + (i * STEP) + 'px;top:0;width:' + WW + 'px;height:' + WH + 'px';
+    k.addEventListener('click', () => togglePianoKey(pc));
+    cont.appendChild(k);
+  });
+  blacks.forEach(([pc, after]) => {
+    const k = document.createElement('div');
+    k.className = 'tpk tpk-b' + (S.heldPcs.has(pc) ? ' on' : '');
+    k.style.cssText = 'left:' + (after * STEP + STEP - BW / 2) + 'px;top:0;width:' + BW + 'px;height:' + BH + 'px';
+    k.addEventListener('click', () => togglePianoKey(pc));
+    cont.appendChild(k);
+  });
+}
+
+function togglePianoKey(pc) {
   if (S.inputMode !== 'chips') return;
   if (S.heldPcs.has(pc)) S.heldPcs.delete(pc); else S.heldPcs.add(pc);
-  renderChips();
+  renderTapPiano();
   updateHeldNotesDisplay();
   checkAnswer();
 }
@@ -724,7 +811,17 @@ function checkAnswer() {
     S.checkTimer = null;
     if (!S.currentQ || S.currentQ.answered) return;
     for (const validSet of S.currentQ.validSets) {
-      if (setsEqual(S.heldPcs, validSet)) {
+      if (setsEqual(S.heldPcs, validSet)) { registerCorrect(); return; }
+    }
+    judgeHeldWrong();
+  }, 40);
+}
+
+/** Shared success path for both answer channels: piano/MIDI note-set match,
+ *  or the symbolic root+quality answer in tap mode. */
+function registerCorrect() {
+  {
+    {
         S.wrongActive = false;
         if (S.currentQ.secondary && S.currentQ.secondaryStage === 'dominant') {
           feedbackCorrect();
@@ -733,6 +830,7 @@ function checkAnswer() {
           // In chips mode there is no release: clear the selection instead.
           if (S.inputMode === 'chips') {
             S.heldPcs = new Set();
+            S.tapRoot = null; S.tapQual = null; S.tapJudged = null;
             renderChips();
             updateHeldNotesDisplay();
           } else {
@@ -758,9 +856,12 @@ function checkAnswer() {
         document.getElementById('roman-numeral').classList.add('correct');
         // pendingQ is already pre-built; no need to rebuild or update preview
         if (S.inputMode === 'chips') chipsAdvanceAfterCorrect();
-        return;
-      }
     }
+  }
+}
+
+/** Wrong-note detection over the held/tapped note set (debounced path). */
+function judgeHeldWrong() {
     // Grace period: after a stage/question switch with keys still held,
     // leftover notes from the previous chord must not count as "wrong".
     // Lifts once the hand fully clears.
@@ -781,7 +882,6 @@ function checkAnswer() {
     } else {
       S.wrongActive = false;
     }
-  }, 40);
 }
 
 /** Set equality: same size and every element of a is in b. */
@@ -936,6 +1036,7 @@ function renderQuestion() {
   updateCircleOfFifths();
   updateScaleRef();
   renderChordRef();
+  S.tapRoot = null; S.tapQual = null; S.tapJudged = null;
   renderChips();
 }
 

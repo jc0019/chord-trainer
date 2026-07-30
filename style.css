@@ -74,9 +74,16 @@ select:disabled{opacity:.45;cursor:not-allowed}
 /* Fixed two-line budget so line-wrap (long flat-key names) never resizes the card */
 #answer-display{font-size:1rem;color:var(--acc);height:2.9em;overflow:hidden;transition:opacity .3s}
 #scale-label{white-space:nowrap}
-/* ---- Note chips (tap-to-answer input) ---- */
-#chips-area{margin-top:12px}
-#chips-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+/* ---- Tap-to-answer input: root row + quality row + one-octave piano ---- */
+#chips-area{margin-top:2px}
+#tap-roots,#tap-quals{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px}
+.chip.qual{min-height:34px;padding:6px 10px;font-size:.82rem}
+#tap-piano{position:relative;margin:18px auto 0;user-select:none}
+.tpk{position:absolute;border-radius:0 0 5px 5px;cursor:pointer;transition:background .12s}
+.tpk-w{background:var(--key-w);border:1px solid var(--key-w-bd);z-index:1}
+.tpk-b{background:#4a4a4a;border:1px solid #3a3a3a;z-index:2}
+.tpk-w:hover{background:color-mix(in srgb,var(--hl) 25%,var(--key-w))}
+.tpk-w.on,.tpk-b.on{background:var(--hl);border-color:var(--hl-deep)}
 .chip{min-width:46px;min-height:44px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--txt);font-size:.9rem;cursor:pointer;transition:all .15s}
 .chip .enh{display:block;font-size:.7rem;line-height:1.3;pointer-events:none}
 .chip.black{background:#4a4a4a;color:#eee;border-color:#3a3a3a}
