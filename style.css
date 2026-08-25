@@ -194,3 +194,23 @@ select:disabled{opacity:.45;cursor:not-allowed}
   #next-preview{font-size:1.4rem;height:1.8rem}
   #action-btns button{min-width:96px}
 }
+
+/* ---- Metronome (fixed bottom-right corner) ---- */
+#metro{position:fixed;right:20px;bottom:20px;z-index:90;display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border-l);border-radius:24px;padding:7px 10px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+#metro button{display:grid;place-items:center;padding:0;line-height:1;cursor:pointer}
+#metro-play{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--bg);color:var(--acc);transition:border-color .2s,background .2s,color .2s,box-shadow .18s}
+#metro-play svg{display:block;fill:currentColor}
+#metro-icon-stop{display:none}
+#metro.running #metro-icon-play{display:none}
+#metro.running #metro-icon-stop{display:block}
+#metro-play:hover{border-color:var(--acc-l)}
+#metro.running #metro-play{background:var(--acc);border-color:var(--acc);color:#fff}
+#metro-play.beat{box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 22%,transparent);transition:border-color .2s,background .2s,color .2s}
+#metro-minus,#metro-plus{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:var(--bg);color:var(--txt2);font-size:.85rem;transition:border-color .2s,color .2s}
+#metro-minus:hover,#metro-plus:hover{border-color:var(--acc-l);color:var(--acc)}
+#metro-readout{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:38px;user-select:none}
+#metro-bpm{font-size:1rem;line-height:1;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums}
+#metro-bpm-unit{font-size:.55rem;line-height:1;letter-spacing:1.5px;color:var(--txt3)}
+@media(max-width:700px){
+  #metro{right:12px;bottom:12px}
+}

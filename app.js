@@ -1864,6 +1864,129 @@ function setupEvents() {
   });
 }
 
+// ======================== METRONOME ========================
+/* Fixed bottom-right widget. Timing uses a lookahead scheduler
+   ("A Tale of Two Clocks" pattern): a coarse setInterval pump wakes every
+   ~25ms and schedules any ticks falling in the next ~120ms directly on the
+   AudioContext clock via osc.start(t) — sample-accurate, immune to
+   main-thread timer jitter. Reuses the shared AudioContext (getAudioCtx). */
+const METRO = {
+  bpm: 96,
+  running: false,
+  timerId: null,
+  nextTickTime: 0,   // AudioContext time of the next unscheduled tick
+  LOOKAHEAD_MS: 25,  // scheduler pump interval
+  AHEAD_S: 0.12,     // how far ahead to schedule audio
+  MIN_BPM: 30,
+  MAX_BPM: 240,
+};
+
+/** Short bright blip — same warm filtered-triangle family as the feedback
+ *  sounds, but higher and shorter so it sits clear of the chime (660–880Hz). */
+function metroTickSound(t) {
+  const ctx = getAudioCtx();
+  if (!ctx || ctx.state !== 'running') return;
+  const osc = ctx.createOscillator();
+  const filt = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = 1568; // G6
+  filt.type = 'lowpass';
+  filt.frequency.value = 2600;
+  filt.Q.value = 0.5;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.13, t + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  osc.connect(filt);
+  filt.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.07);
+}
+
+/** Pulse the play button at (approximately) the moment the scheduled tick sounds. */
+function metroPulseAt(t) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const delay = Math.max(0, (t - ctx.currentTime) * 1000);
+  setTimeout(() => {
+    if (!METRO.running) return;
+    const btn = document.getElementById('metro-play');
+    btn.classList.remove('beat');
+    void btn.offsetWidth; // force reflow so the transition restarts
+    btn.classList.add('beat');
+    setTimeout(() => btn.classList.remove('beat'), 90);
+  }, delay);
+}
+
+function metroScheduler() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  while (METRO.nextTickTime < ctx.currentTime + METRO.AHEAD_S) {
+    metroTickSound(METRO.nextTickTime);
+    metroPulseAt(METRO.nextTickTime);
+    METRO.nextTickTime += 60 / METRO.bpm;
+  }
+}
+
+function metroStart() {
+  const ctx = getAudioCtx(); // click gesture — creates/resumes the context
+  if (!ctx) return;
+  METRO.running = true;
+  METRO.nextTickTime = ctx.currentTime + 0.08;
+  METRO.timerId = setInterval(metroScheduler, METRO.LOOKAHEAD_MS);
+  metroUpdateUI();
+}
+
+function metroStop() {
+  METRO.running = false;
+  clearInterval(METRO.timerId);
+  METRO.timerId = null;
+  document.getElementById('metro-play').classList.remove('beat');
+  metroUpdateUI();
+}
+
+function metroSetBpm(bpm) {
+  METRO.bpm = Math.min(METRO.MAX_BPM, Math.max(METRO.MIN_BPM, Math.round(bpm)));
+  document.getElementById('metro-bpm').textContent = METRO.bpm;
+  try {
+    localStorage.setItem('ct-metro', JSON.stringify({ bpm: METRO.bpm }));
+  } catch (e) { /* private mode etc. — non-fatal */ }
+}
+
+function metroUpdateUI() {
+  // Play/stop icons are inline SVG toggled purely via the .running class in CSS
+  document.getElementById('metro').classList.toggle('running', METRO.running);
+}
+
+/** Fire on press, then auto-repeat while held (450ms delay, then 16/s). */
+function bindHoldRepeat(btn, fn) {
+  let delayT = null, repeatT = null;
+  const stop = () => {
+    clearTimeout(delayT); clearInterval(repeatT);
+    delayT = repeatT = null;
+  };
+  btn.addEventListener('pointerdown', () => {
+    fn();
+    delayT = setTimeout(() => { repeatT = setInterval(fn, 62); }, 450);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+}
+
+function initMetronome() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('ct-metro') || '{}');
+    if (Number.isFinite(saved.bpm)) METRO.bpm = saved.bpm;
+  } catch (e) { /* ignore corrupt prefs */ }
+  metroSetBpm(METRO.bpm);
+
+  document.getElementById('metro-play').addEventListener('click', () => {
+    if (METRO.running) metroStop(); else metroStart();
+  });
+  bindHoldRepeat(document.getElementById('metro-minus'), () => metroSetBpm(METRO.bpm - 1));
+  bindHoldRepeat(document.getElementById('metro-plus'), () => metroSetBpm(METRO.bpm + 1));
+}
+
 // ======================== INIT ========================
 function init() {
   populateSelectors();
@@ -1873,6 +1996,7 @@ function init() {
   initDistSelect();
   initThemePicker();
   initInputToggle();
+  initMetronome();
   updateModeBarUI();
   setupEvents();
   initMidi();

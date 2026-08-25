@@ -128,6 +128,14 @@
   </div>
 </div>
 
+<!-- Metronome: fixed bottom-right corner -->
+<div id="metro">
+  <button id="metro-play" title="Metronome start / stop"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path id="metro-icon-play" d="M3.5 1.6 L10.9 6 L3.5 10.4 Z"/><rect id="metro-icon-stop" x="2.6" y="2.6" width="6.8" height="6.8" rx="1"/></svg></button>
+  <button id="metro-minus" title="Slower (hold to repeat)">&#8722;</button>
+  <span id="metro-readout"><span id="metro-bpm">96</span><span id="metro-bpm-unit">BPM</span></span>
+  <button id="metro-plus" title="Faster (hold to repeat)">+</button>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
