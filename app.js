@@ -576,7 +576,11 @@ function handleMidiMessage(msg) {
 function pickDegree() {
   const isCircleMode = S.mode === '251-all';
   if (S.mode === 'sequential') {
-    const d = S.modeIndex % 7;
+    // Up and down like a scale: 1 2 3 4 5 6 7 8 7 6 5 4 3 2 | 1 2 …
+    // 14-step cycle; step 7 is the octave (degree 0 again), and the
+    // turnarounds at 8 and 1 never repeat a degree back-to-back.
+    const i = S.modeIndex % 14;
+    const d = i <= 7 ? i % 7 : 14 - i;
     S.modeIndex++;
     return d;
   }
@@ -1049,7 +1053,15 @@ function updateHeldNotesDisplay() {
   const sharps = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
   const flats  = ['C','D\u266d','D','E\u266d','E','F','G\u266d','G','A\u266d','A','B\u266d','B'];
   const fallback = useFl ? flats : sharps;
-  const notes = [...S.heldPcs].sort((a,b) => a-b).map(pc => pcName[pc] || fallback[pc]);
+  const nameOf = pc => pcName[pc] || fallback[pc];
+  // MIDI mode: list the held notes in actual pitch order (low → high, as read
+  // left-to-right on the keyboard), doubled pitch classes included — this is
+  // display only; judging still compares pitch classes (S.heldPcs), so
+  // voicing/octave never affects correctness. Tap mode has no octave info,
+  // so it falls back to pitch-class order from C.
+  const notes = S.heldMidiNotes.size > 0
+    ? [...S.heldMidiNotes].sort((a, b) => a - b).map(n => nameOf(n % 12))
+    : [...S.heldPcs].sort((a, b) => a - b).map(nameOf);
   document.getElementById('held-notes').textContent = notes.length ? notes.join('  ') : '';
 }
 
