@@ -17,7 +17,7 @@ header{display:flex;justify-content:space-between;align-items:center;padding:0 2
 .theme-dot[data-theme="lavender"]{background:#7C6E9B}
 .theme-dot[data-theme="sky"]{background:#5E82A0}
 .theme-dot.active{box-shadow:0 0 0 2px var(--acc)}
-.theme-dot:hover:not(.active){box-shadow:0 0 0 2px var(--acc-xl)}
+@media (hover: hover){.theme-dot:hover:not(.active){box-shadow:0 0 0 2px var(--acc-xl)}}
 header h1{font-size:1.1rem;font-weight:500;color:var(--acc);letter-spacing:.5px}
 #midi-status{font-size:.76rem;padding:4px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card)}
 #midi-status.connected{color:var(--acc);border-color:var(--acc-xl)}
@@ -37,16 +37,16 @@ select{background:var(--bg);color:var(--txt);border:1px solid var(--border);bord
 #key-select{width:74px}
 #scale-select{width:160px}
 select:focus{outline:none;border-color:var(--acc)}
-select:hover{border-color:var(--acc-l)}
+@media (hover: hover){select:hover{border-color:var(--acc-l)}}
 #chord-type-btns{display:flex;gap:3px}
 .type-btn,.content-btn{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;transition:all .2s;font-weight:400}
 .type-btn.active,.content-btn.active{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:500}
-.type-btn:hover:not(.active),.content-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}
+@media (hover: hover){.type-btn:hover:not(.active),.content-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}}
 /* Contextual sub-controls (Order / Keys / Mix), shown per Practice content */
 .ctrl-sub{display:flex;align-items:center;gap:5px;padding-left:12px;margin-left:6px;border-left:1px solid var(--border)}
 .sub-btn{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:.76rem;cursor:pointer;transition:all .2s}
 .sub-btn.active{background:var(--acc-l);color:#fff;border-color:var(--acc-l);font-weight:500}
-.sub-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}
+@media (hover: hover){.sub-btn:hover:not(.active){border-color:var(--acc-l);color:var(--txt)}}
 select:disabled{opacity:.45;cursor:not-allowed}
 /* ---- Cards ---- */
 .card{background:var(--card);border:1px solid var(--border-l);border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px color-mix(in srgb,var(--acc) 5%,transparent)}
@@ -70,7 +70,7 @@ select:disabled{opacity:.45;cursor:not-allowed}
 #next-preview .rn-prefix{font-size:.55em;margin-right:1px}
 #action-btns{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
 #action-btns button{background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:8px;padding:8px 0;min-width:110px;font-size:.82rem;cursor:pointer;transition:all .2s;text-align:center}
-#action-btns button:hover{border-color:var(--acc-l);color:var(--txt)}
+@media (hover: hover){#action-btns button:hover{border-color:var(--acc-l);color:var(--txt)}}
 /* Fixed two-line budget so line-wrap (long flat-key names) never resizes the card */
 #answer-display{font-size:1rem;color:var(--acc);height:2.9em;overflow:hidden;transition:opacity .3s}
 #scale-label{white-space:nowrap}
@@ -82,12 +82,12 @@ select:disabled{opacity:.45;cursor:not-allowed}
 .tpk{position:absolute;border-radius:0 0 5px 5px;cursor:pointer;transition:background .12s}
 .tpk-w{background:var(--key-w);border:1px solid var(--key-w-bd);z-index:1}
 .tpk-b{background:#4a4a4a;border:1px solid #3a3a3a;z-index:2}
-.tpk-w:hover{background:color-mix(in srgb,var(--hl) 25%,var(--key-w))}
+@media (hover: hover){.tpk-w:hover{background:color-mix(in srgb,var(--hl) 25%,var(--key-w))}}
 .tpk-w.on,.tpk-b.on{background:var(--hl);border-color:var(--hl-deep)}
 .chip{min-width:46px;min-height:44px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--txt);font-size:.9rem;cursor:pointer;transition:all .15s}
 .chip .enh{display:block;font-size:.7rem;line-height:1.3;pointer-events:none}
 .chip.black{background:#4a4a4a;color:#eee;border-color:#3a3a3a}
-.chip:hover{border-color:var(--acc-l)}
+@media (hover: hover){.chip:hover{border-color:var(--acc-l)}}
 .chip.on,.chip.black.on{background:var(--hl);border-color:var(--hl-deep);color:#2a2a2a;font-weight:600}
 #chips-hint{margin-top:8px;font-size:.7rem;color:var(--txt3);height:1.2em;line-height:1.2em;overflow:visible}
 /* ---- Live feedback strip (inside question card) ---- */
@@ -127,8 +127,8 @@ select:disabled{opacity:.45;cursor:not-allowed}
 #cof-svg .cof-seg-minor.in-scale{fill:color-mix(in srgb,var(--hl) 28%,transparent)}
 #cof-svg .cof-seg-major.active{fill:var(--hl-deep)}
 #cof-svg .cof-seg-minor.active{fill:color-mix(in srgb,var(--hl-deep) 34%,transparent)}
-#cof-svg .cof-seg-major:hover:not(.active){fill:color-mix(in srgb,var(--acc) 16%,transparent)}
-#cof-svg .cof-seg-minor:hover:not(.active){fill:color-mix(in srgb,var(--acc) 10%,transparent)}
+@media (hover: hover){#cof-svg .cof-seg-major:hover:not(.active){fill:color-mix(in srgb,var(--acc) 16%,transparent)}}
+@media (hover: hover){#cof-svg .cof-seg-minor:hover:not(.active){fill:color-mix(in srgb,var(--acc) 10%,transparent)}}
 #cof-svg .cof-key{font-size:12.5px;fill:var(--txt3)}
 #cof-svg .cof-key.in-scale{font-size:15px;fill:var(--txt);font-weight:500}
 #cof-svg .cof-key.active{font-size:17px;fill:#fff;font-weight:700}
@@ -203,11 +203,11 @@ select:disabled{opacity:.45;cursor:not-allowed}
 #metro-icon-stop{display:none}
 #metro.running #metro-icon-play{display:none}
 #metro.running #metro-icon-stop{display:block}
-#metro-play:hover{border-color:var(--acc-l)}
+@media (hover: hover){#metro-play:hover{border-color:var(--acc-l)}}
 #metro.running #metro-play{background:var(--acc);border-color:var(--acc);color:#fff}
 #metro-play.beat{box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 22%,transparent);transition:border-color .2s,background .2s,color .2s}
 #metro-minus,#metro-plus{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:var(--bg);color:var(--txt2);font-size:.85rem;transition:border-color .2s,color .2s}
-#metro-minus:hover,#metro-plus:hover{border-color:var(--acc-l);color:var(--acc)}
+@media (hover: hover){#metro-minus:hover,#metro-plus:hover{border-color:var(--acc-l);color:var(--acc)}}
 #metro-readout{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:38px;user-select:none}
 #metro-bpm{font-size:1rem;line-height:1;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums}
 #metro-bpm-unit{font-size:.55rem;line-height:1;letter-spacing:1.5px;color:var(--txt3)}
